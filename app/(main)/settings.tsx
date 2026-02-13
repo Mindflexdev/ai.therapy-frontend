@@ -1,11 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
-import { ChevronLeft, User, CreditCard, Sliders, Link, ShieldCheck, Bell, Globe, Lock, MessageCircle, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, User, CreditCard, Sliders, Link, ShieldCheck, Bell, Globe, Lock, MessageCircle, ChevronRight, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function SettingsScreen() {
     const router = useRouter();
+    const { logout } = useAuth();
+
+    const handleLogout = () => {
+        logout();
+        router.replace('/');
+    };
 
     const SettingRow = ({ icon: Icon, label, value, onPress }: any) => (
         <TouchableOpacity style={styles.row} onPress={onPress}>
@@ -60,6 +67,11 @@ export default function SettingsScreen() {
                     <SettingRow icon={Bell} label="Notifications" />
                     <SettingRow icon={Lock} label="Privacy" />
                 </View>
+
+                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                    <LogOut size={20} color={'#ff4444'} />
+                    <Text style={styles.logoutText}>Log Out</Text>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );
@@ -81,11 +93,12 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         color: Theme.colors.text.primary,
-        fontFamily: 'Playfair-Bold',
+        fontFamily: 'Inter-Bold',
         fontSize: 20,
     },
     scrollContent: {
         padding: Theme.spacing.l,
+        paddingBottom: Theme.spacing.xxl,
     },
     userCard: {
         backgroundColor: 'rgba(255,255,255,0.03)',
@@ -160,4 +173,19 @@ const styles = StyleSheet.create({
         color: Theme.colors.text.muted,
         marginRight: Theme.spacing.s,
     },
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: Theme.spacing.m,
+        backgroundColor: 'rgba(255, 68, 68, 0.1)',
+        borderRadius: Theme.borderRadius.m,
+        marginTop: Theme.spacing.xl,
+    },
+    logoutText: {
+        color: '#ff4444',
+        fontFamily: 'Inter-Bold',
+        marginLeft: Theme.spacing.s,
+        fontSize: 16,
+    }
 });

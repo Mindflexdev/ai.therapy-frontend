@@ -1,26 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
-import { ChevronLeft, Phone, Video, Search, Image as ImageIcon, Star, Bell, Lock, Share2 } from 'lucide-react-native';
+import { ChevronLeft, Phone, Search, Image as ImageIcon, Star, Bell, Lock } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { THERAPIST_IMAGES } from '../../src/constants/Therapists';
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const { name, image } = useLocalSearchParams();
+    const { name } = useLocalSearchParams();
 
-    // Parse the image parameter correctly
-    let therapistImage: any = null;
-    if (typeof image === 'string') {
-        if (!isNaN(Number(image))) {
-            therapistImage = Number(image);
-        } else {
-            therapistImage = { uri: image };
-        }
-    } else {
-        therapistImage = image;
-    }
-
-    const therapistName = name || 'Marcus';
+    const therapistName = (name as string) || 'Marcus';
+    const therapistImage = THERAPIST_IMAGES[therapistName];
 
     return (
         <SafeAreaView style={styles.container}>
@@ -29,9 +19,7 @@ export default function ProfileScreen() {
                     <ChevronLeft size={28} color={Theme.colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Contact Info</Text>
-                <TouchableOpacity>
-                    <Text style={styles.editButton}>Edit</Text>
-                </TouchableOpacity>
+                <View style={{ width: 28 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -53,10 +41,6 @@ export default function ProfileScreen() {
                     <TouchableOpacity style={styles.actionBtn}>
                         <Phone size={24} color={Theme.colors.primary} />
                         <Text style={styles.actionText}>Audio</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionBtn}>
-                        <Video size={24} color={Theme.colors.primary} />
-                        <Text style={styles.actionText}>Video</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionBtn}>
                         <Search size={24} color={Theme.colors.primary} />
@@ -118,11 +102,6 @@ const styles = StyleSheet.create({
         color: Theme.colors.text.primary,
         fontFamily: 'Playfair-Bold',
         fontSize: 20,
-    },
-    editButton: {
-        color: Theme.colors.primary,
-        fontFamily: 'Inter-Bold',
-        fontSize: 16,
     },
     scrollContent: {
         alignItems: 'center',

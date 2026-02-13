@@ -11,23 +11,12 @@ const INITIAL_MESSAGES = [
 ];
 
 
-export default function ChatScreen() {
-    const { name, image } = useLocalSearchParams();
-    const therapistName = (name as string) || 'Marcus';
+import { THERAPIST_IMAGES } from '../../src/constants/Therapists';
 
-    // Parse the image parameter correctly
-    let therapistImage: any = null;
-    if (typeof image === 'string') {
-        // If passed as a number/string ID through router
-        if (!isNaN(Number(image))) {
-            therapistImage = Number(image);
-        } else {
-            // If it's a URI string (rare with require)
-            therapistImage = { uri: image };
-        }
-    } else {
-        therapistImage = image;
-    }
+export default function ChatScreen() {
+    const { name } = useLocalSearchParams();
+    const therapistName = (name as string) || 'Marcus';
+    const therapistImage = THERAPIST_IMAGES[therapistName];
 
     const [messages, setMessages] = useState<any[]>([]);
     const [isTyping, setIsTyping] = useState(true);

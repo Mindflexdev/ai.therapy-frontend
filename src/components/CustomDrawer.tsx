@@ -15,10 +15,14 @@ import { useAuth } from '../context/AuthContext';
 import { Lock } from 'lucide-react-native';
 
 export const CustomDrawer = (props: DrawerContentComponentProps) => {
-    const { isLoggedIn } = useAuth();
+    const { isLoggedIn, selectedTherapistId } = useAuth();
+
+    const isUnlocked = (t: any) => {
+        return isLoggedIn && (t.id === selectedTherapistId);
+    };
 
     const handleTherapistPress = (t: any) => {
-        if (isLoggedIn) {
+        if (isUnlocked(t)) {
             props.navigation.navigate('chat', { name: t.name, image: t.image });
         } else {
             props.navigation.navigate('paywall', { name: t.name, image: t.image });
@@ -34,29 +38,32 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
             <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.sectionTitle}>Available</Text>
                 <View style={styles.section}>
-                    {THERAPISTS.map((t) => (
-                        <TouchableOpacity key={t.id} style={styles.therapistItem} onPress={() => handleTherapistPress(t)}>
-                            <View style={styles.avatarWrapper}>
-                                <Image source={t.image} style={[styles.avatar, !isLoggedIn && styles.lockedAvatar]} defaultSource={require('../../assets/adaptive-icon.png')} />
-                                {isLoggedIn ? (
-                                    <View style={styles.proBadge}>
-                                        <Crown size={10} color={Theme.colors.background} />
-                                    </View>
-                                ) : (
-                                    <View style={styles.lockOverlay}>
-                                        <Lock size={12} color="#FFF" />
-                                    </View>
-                                )}
-                            </View>
-                            <View>
-                                <Text style={[styles.therapistName, !isLoggedIn && styles.lockedText]} numberOfLines={1}>{t.name}</Text>
-                                <View style={styles.statusRow}>
-                                    <View style={styles.statusDot} />
-                                    <Text style={styles.statusText}>online</Text>
+                    {THERAPISTS.map((t) => {
+                        const unlocked = isUnlocked(t);
+                        return (
+                            <TouchableOpacity key={t.id} style={styles.therapistItem} onPress={() => handleTherapistPress(t)}>
+                                <View style={styles.avatarWrapper}>
+                                    <Image source={t.image} style={[styles.avatar, !unlocked && styles.lockedAvatar]} defaultSource={require('../../assets/adaptive-icon.png')} />
+                                    {unlocked ? (
+                                        <View style={styles.proBadge}>
+                                            <Crown size={10} color={Theme.colors.background} />
+                                        </View>
+                                    ) : (
+                                        <View style={styles.lockOverlay}>
+                                            <Lock size={12} color="#FFF" />
+                                        </View>
+                                    )}
                                 </View>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
+                                <View>
+                                    <Text style={[styles.therapistName, !unlocked && styles.lockedText]} numberOfLines={1}>{t.name}</Text>
+                                    <View style={styles.statusRow}>
+                                        <View style={styles.statusDot} />
+                                        <Text style={styles.statusText}>online</Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             </DrawerContentScrollView>
 

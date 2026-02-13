@@ -11,12 +11,17 @@ const THERAPISTS = [
   { id: '4', name: 'Emily', image: require('../assets/characters/emily.jpg') },
 ];
 
+import { useAuth } from '../src/context/AuthContext';
+
 export default function Onboarding() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const router = useRouter();
+  const { selectTherapist } = useAuth();
 
   const handleSelect = (therapist: any) => {
     setSelectedId(therapist.id);
+    selectTherapist(therapist.id);
+
     // Short delay for the glow effect to be visible
     setTimeout(() => {
       router.push({
