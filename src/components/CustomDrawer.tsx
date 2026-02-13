@@ -18,27 +18,13 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.logo}>ai.therapy</Text>
-                <TouchableOpacity style={styles.newChat}>
-                    <MessageSquare size={20} color={Theme.colors.primary} />
-                </TouchableOpacity>
             </View>
 
             <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContent}>
-                <View style={styles.section}>
-                    <TouchableOpacity style={styles.menuItem}>
-                        <Folder size={20} color={Theme.colors.text.secondary} />
-                        <Text style={styles.menuText}>Projects</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuItem}>
-                        <Archive size={20} color={Theme.colors.text.secondary} />
-                        <Text style={styles.menuText}>Artifacts</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <Text style={styles.sectionTitle}>Recently Used</Text>
+                <Text style={styles.sectionTitle}>Also online</Text>
                 <View style={styles.section}>
                     {THERAPISTS.map((t) => (
-                        <TouchableOpacity key={t.id} style={styles.therapistItem} onPress={() => props.navigation.navigate('paywall')}>
+                        <TouchableOpacity key={t.id} style={styles.therapistItem} onPress={() => props.navigation.navigate('paywall', { name: t.name, image: t.image })}>
                             <View style={styles.avatarWrapper}>
                                 <Image source={t.image} style={styles.avatar} defaultSource={require('../../assets/adaptive-icon.png')} />
                                 <View style={styles.proBadge}>
@@ -49,10 +35,6 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
                         </TouchableOpacity>
                     ))}
                 </View>
-
-                <TouchableOpacity style={styles.allChats}>
-                    <Text style={styles.allChatsText}>All Chats {'>'}</Text>
-                </TouchableOpacity>
             </DrawerContentScrollView>
 
             <View style={styles.bottomSection}>
