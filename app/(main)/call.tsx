@@ -4,22 +4,15 @@ import { Theme } from '../../src/constants/Theme';
 import { ChevronDown, Users, MicOff, Volume2, VideoOff, PhoneOff, MoreHorizontal } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
+import { THERAPIST_IMAGES } from '../../src/constants/Therapists';
+
 export default function CallScreen() {
     const router = useRouter();
-    const { name, image } = useLocalSearchParams();
-    const therapistName = (name as string) || 'Marcus';
+    const { name } = useLocalSearchParams();
 
-    // Parse the image parameter correctly
-    let therapistImage: any = null;
-    if (typeof image === 'string') {
-        if (!isNaN(Number(image))) {
-            therapistImage = Number(image);
-        } else {
-            therapistImage = { uri: image };
-        }
-    } else {
-        therapistImage = image;
-    }
+    // Fallback to Marcus if no name is provided (shouldn't happen in flow)
+    const therapistName = (name as string) || 'Marcus';
+    const therapistImage = THERAPIST_IMAGES[therapistName];
 
     const scale = useRef(new Animated.Value(1)).current;
     const opacity = useRef(new Animated.Value(0.5)).current;

@@ -1,15 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, Linking } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { Theme } from '../constants/Theme';
-import { MessageSquare, Folder, Archive, Settings, LogIn, Crown } from 'lucide-react-native';
-
-const THERAPISTS = [
-    { id: '1', name: 'Marcus', image: require('../../assets/characters/marcus.jpg') },
-    { id: '2', name: 'Sarah', image: require('../../assets/characters/sarah.jpg') },
-    { id: '3', name: 'Liam', image: require('../../assets/characters/liam.jpg') },
-    { id: '4', name: 'Emily', image: require('../../assets/characters/emily.jpg') },
-];
+import { LogIn, Crown, MessageSquare, ExternalLink } from 'lucide-react-native';
+import { THERAPISTS } from '../constants/Therapists';
 
 import { useAuth } from '../context/AuthContext';
 import { Lock } from 'lucide-react-native';
@@ -18,7 +12,8 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
     const { isLoggedIn, selectedTherapistId } = useAuth();
 
     const isUnlocked = (t: any) => {
-        return isLoggedIn && (t.id === selectedTherapistId);
+        // Unlocked if logged in OR if it's the selected therapist
+        return isLoggedIn || (t.id === selectedTherapistId);
     };
 
     const handleTherapistPress = (t: any) => {
@@ -27,6 +22,11 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
         } else {
             props.navigation.navigate('paywall', { name: t.name, image: t.image });
         }
+    };
+
+    const handleLinkPress = (url: string) => {
+        // Placeholder for now, could be Linking.openURL(url)
+        console.log('Opening:', url);
     };
 
     return (
@@ -65,6 +65,18 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
                         );
                     })}
                 </View>
+
+                <View style={styles.footerLinks}>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => handleLinkPress('terms')}>
+                        <Text style={styles.footerLinkText}>Nutzungsbedingungen</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => handleLinkPress('privacy')}>
+                        <Text style={styles.footerLinkText}>Datenschutzrichtlinie</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => handleLinkPress('feedback')}>
+                        <Text style={styles.footerLinkText}>Feedback</Text>
+                    </TouchableOpacity>
+                </View>
             </DrawerContentScrollView>
 
             <View style={styles.bottomSection}>
@@ -73,7 +85,10 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
                         <View style={styles.userAvatar}>
                             <Text style={styles.userInitial}>M</Text>
                         </View>
-                        <Text style={styles.userName}>Moritz</Text>
+                        <View>
+                            <Text style={styles.userName}>Moritz</Text>
+                            <Text style={styles.userEmail}>moritz.t@example.com</Text>
+                        </View>
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity style={styles.loginButton} onPress={() => props.navigation.navigate('login')}>
@@ -229,6 +244,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'Inter-Regular',
     },
+    userEmail: {
+        color: Theme.colors.text.muted,
+        marginLeft: Theme.spacing.m,
+        fontSize: 12,
+        marginTop: 2,
+    },
     loginButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -242,4 +263,19 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'Inter-Bold',
     },
+    footerLinks: {
+        paddingHorizontal: Theme.spacing.m,
+        marginTop: Theme.spacing.l,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.05)',
+        paddingTop: Theme.spacing.l,
+    },
+    footerLink: {
+        paddingVertical: Theme.spacing.s,
+    },
+    footerLinkText: {
+        color: Theme.colors.text.muted,
+        fontSize: 13,
+        fontFamily: 'Inter-Regular',
+    }
 });
