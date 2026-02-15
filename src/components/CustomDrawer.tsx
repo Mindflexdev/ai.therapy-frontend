@@ -32,7 +32,11 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.logo}>ai.therapy</Text>
+                <Text style={styles.logo}>
+                    <Text style={styles.logoWhite}>ai</Text>
+                    <Text style={styles.logoDot}>.</Text>
+                    <Text style={styles.logoWhite}>therapy</Text>
+                </Text>
             </View>
 
             <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContent}>
@@ -114,8 +118,13 @@ const styles = StyleSheet.create({
     },
     logo: {
         fontSize: 20,
-        color: Theme.colors.text.primary,
         fontFamily: 'Playfair-Bold',
+    },
+    logoWhite: {
+        color: Theme.colors.text.primary,
+    },
+    logoDot: {
+        color: Theme.colors.primary,
     },
     newChat: {
         padding: Theme.spacing.s,

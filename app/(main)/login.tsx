@@ -1,16 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, Modal, Image } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
-import { ChevronLeft } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function LoginScreen() {
     const router = useRouter();
-
+    const { showLoginModal, setShowLoginModal } = useAuth();
     const { name, image } = useLocalSearchParams();
 
     const handleContinue = () => {
+        setShowLoginModal(false);
         // Navigate to paywall first, passing along the therapist info if present
         router.push({
             pathname: '/(main)/paywall',
@@ -23,18 +25,40 @@ export default function LoginScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <ChevronLeft size={28} color={Theme.colors.primary} />
-            </TouchableOpacity>
+        <Modal
+            visible={showLoginModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowLoginModal(false)}
+        >
+            <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setShowLoginModal(false)}
+            >
+                <TouchableOpacity
+                    activeOpacity={1}
+                    onPress={(e) => e.stopPropagation()}
+                    style={styles.modalContent}
+                >
+                    <SafeAreaView style={styles.container}>
+                        <TouchableOpacity onPress={() => setShowLoginModal(false)} style={styles.closeButton}>
+                            <X size={24} color={Theme.colors.text.secondary} />
+                        </TouchableOpacity>
 
-            <View style={styles.content}>
+                        <View style={styles.content}>
                 <View style={styles.logoSection}>
-                    <Text style={styles.logo}>ai.therapy</Text>
-                    <Text style={styles.slogan}>not real therapy</Text>
+                    <Text style={styles.logo}>
+                        <Text style={styles.logoWhite}>ai</Text>
+                        <Text style={styles.logoDot}>.</Text>
+                        <Text style={styles.logoWhite}>therapy</Text>
+                    </Text>
+                    <Image
+                        source={require('../../assets/logo.png')}
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                    />
                 </View>
-
-                <Text style={styles.title}>Log in if you cant{"\n"}talk to humans{"\n"}right now</Text>
 
                 <View style={styles.form}>
                     {/* Disabled Social Buttons */}
@@ -86,16 +110,37 @@ export default function LoginScreen() {
                 </View>
             </View>
         </SafeAreaView>
+                </TouchableOpacity>
+            </TouchableOpacity>
+        </Modal>
     );
 }
 
 const styles = StyleSheet.create({
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '90%',
+        maxWidth: 500,
+        maxHeight: '90%',
+        backgroundColor: Theme.colors.background,
+        borderRadius: Theme.borderRadius.xl,
+        overflow: 'hidden',
+    },
     container: {
         flex: 1,
         backgroundColor: Theme.colors.background,
     },
-    backButton: {
-        padding: Theme.spacing.l,
+    closeButton: {
+        position: 'absolute',
+        top: Theme.spacing.m,
+        right: Theme.spacing.m,
+        padding: Theme.spacing.s,
+        zIndex: 1,
     },
     content: {
         flex: 1,
@@ -108,22 +153,18 @@ const styles = StyleSheet.create({
     },
     logo: {
         fontSize: 28,
+        fontFamily: 'Playfair-Bold',
+    },
+    logoWhite: {
+        color: '#FFFFFF',
+    },
+    logoDot: {
         color: Theme.colors.primary,
-        fontFamily: 'Playfair-Bold',
     },
-    slogan: {
-        fontSize: 14,
-        color: Theme.colors.text.secondary,
-        fontFamily: 'Inter-Regular',
-        marginTop: -4,
-    },
-    title: {
-        fontSize: 32,
-        color: Theme.colors.text.primary,
-        fontFamily: 'Playfair-Bold',
-        textAlign: 'center',
-        marginBottom: Theme.spacing.xxl,
-        lineHeight: 40,
+    logoImage: {
+        width: 180,
+        height: 90,
+        marginTop: Theme.spacing.m,
     },
     form: {
         width: '100%',

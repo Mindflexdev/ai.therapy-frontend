@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, useWindowDimensions } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Theme } from '../src/constants/Theme';
@@ -16,7 +16,9 @@ import { useAuth } from '../src/context/AuthContext';
 export default function Onboarding() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const router = useRouter();
-  const { selectTherapist } = useAuth();
+  const { selectTherapist, isLoggedIn, setShowLoginModal } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = width > 768;
 
   const handleSelect = (therapist: any) => {
     setSelectedId(therapist.id);
@@ -33,36 +35,46 @@ export default function Onboarding() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>ai.therapy</Text>
-          <Text style={styles.slogan}>not real therapy</Text>
+        <ScrollView contentContainerStyle={[
+          styles.scrollContent,
+          isDesktop && styles.scrollContentDesktop
+        ]}>
+          <View style={[
+            styles.header,
+            isDesktop && styles.headerDesktop
+          ]}>
+            <Text style={styles.logo}>
+              <Text style={styles.logoWhite}>ai</Text>
+              <Text style={styles.logoDot}>.</Text>
+              <Text style={styles.logoWhite}>therapy</Text>
+            </Text>
+            <Text style={styles.slogan}>not real therapy</Text>
+            <Text style={styles.tagline}>When you can't talk to humans right now.</Text>
+          </View>
+
+          <View style={[
+            styles.grid,
+            isDesktop && styles.gridDesktop
+          ]}>
+            {THERAPISTS.map((t) => (
+              <TherapistCard
+                key={t.id}
+                therapist={t}
+                isSelected={selectedId === t.id}
+                onSelect={() => handleSelect(t)}
+              />
+            ))}
+          </View>
+        </ScrollView>
+
+        <View style={styles.disclaimerContainer}>
+          <Text style={styles.disclaimer}>
+            By exchanging messages with ChatGPT, an AI chatbot, you agree to our{' '}
+            <Text style={styles.link}>Terms of Use</Text> and confirm that you have read our{' '}
+            <Text style={styles.link}>Privacy Policy</Text>. See{' '}
+            <Text style={styles.link}>Cookie Preferences</Text>.
+          </Text>
         </View>
-
-        <Text style={styles.title}>When you cant{"\n"}talk to humans...</Text>
-
-        <View style={styles.grid}>
-          {THERAPISTS.map((t) => (
-            <TherapistCard
-              key={t.id}
-              therapist={t}
-              isSelected={selectedId === t.id}
-              onSelect={() => handleSelect(t)}
-            />
-          ))}
-        </View>
-
-        <Text style={styles.footerText}>...choose one!</Text>
-      </ScrollView>
-
-      <View style={styles.disclaimerContainer}>
-        <Text style={styles.disclaimer}>
-          By exchanging messages with ChatGPT, an AI chatbot, you agree to our{' '}
-          <Text style={styles.link}>Terms of Use</Text> and confirm that you have read our{' '}
-          <Text style={styles.link}>Privacy Policy</Text>. See{' '}
-          <Text style={styles.link}>Cookie Preferences</Text>.
-        </Text>
-      </View>
     </SafeAreaView>
   );
 }
@@ -73,18 +85,38 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.background,
   },
   scrollContent: {
-    padding: Theme.spacing.l,
+    padding: Theme.spacing.s,
+    paddingBottom: Theme.spacing.xl,
     alignItems: 'center',
+  },
+  scrollContentDesktop: {
+    padding: Theme.spacing.m,
   },
   header: {
     alignItems: 'center',
-    marginTop: Theme.spacing.xl,
-    marginBottom: Theme.spacing.xxl,
+    marginTop: Theme.spacing.xs,
+    marginBottom: Theme.spacing.m,
+  },
+  headerDesktop: {
+    marginTop: Theme.spacing.l,
+    marginBottom: Theme.spacing.xl,
   },
   logo: {
     fontSize: 24,
-    color: Theme.colors.primary,
     fontFamily: 'Playfair-Bold',
+  },
+  logoWhite: {
+    color: Theme.colors.text.primary,
+  },
+  logoDot: {
+    color: Theme.colors.primary,
+  },
+  tagline: {
+    fontSize: 24,
+    color: Theme.colors.text.primary,
+    fontFamily: 'Playfair-Bold',
+    marginTop: Theme.spacing.l,
+    textAlign: 'center',
   },
   slogan: {
     fontSize: 12,
@@ -92,25 +124,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     marginTop: -4,
   },
-  title: {
-    fontSize: 32,
-    color: Theme.colors.text.primary,
-    fontFamily: 'Playfair-Bold',
-    textAlign: 'center',
-    marginBottom: Theme.spacing.xxl,
-  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: Theme.spacing.m,
     width: '100%',
+    maxWidth: 600,
   },
-  footerText: {
-    fontSize: 20,
-    color: Theme.colors.text.primary,
-    fontFamily: 'Playfair-Bold',
-    marginTop: Theme.spacing.l,
-    marginBottom: Theme.spacing.xl,
+  gridDesktop: {
+    maxWidth: 700,
+    gap: Theme.spacing.m,
   },
   disclaimerContainer: {
     padding: Theme.spacing.m,

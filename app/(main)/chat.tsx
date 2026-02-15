@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Theme } from '../../src/constants/Theme';
 import { ChatBubble } from '../../src/components/ChatBubble';
 import { Menu, Phone, Video, Plus, Camera, Mic, ChevronLeft } from 'lucide-react-native';
 import { useNavigation, useLocalSearchParams } from 'expo-router';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { useAuth } from '../../src/context/AuthContext';
+import LoginScreen from './login';
 
 const INITIAL_MESSAGES = [
     { id: '1', text: 'Hello, I am [Name]. How can I support you today?', isUser: false, time: '14:20' },
@@ -22,6 +25,7 @@ export default function ChatScreen() {
     const [isTyping, setIsTyping] = useState(true);
     const [inputText, setInputText] = useState('');
     const navigation = useNavigation<DrawerNavigationProp<any>>();
+    const { showLoginModal, setShowLoginModal, isLoggedIn } = useAuth();
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -36,6 +40,16 @@ export default function ChatScreen() {
         return () => clearTimeout(timer);
     }, []);
 
+    useEffect(() => {
+        // Show login modal 500ms after greeting message (2000ms delay)
+        if (!isLoggedIn) {
+            const timer = setTimeout(() => {
+                setShowLoginModal(true);
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoggedIn, setShowLoginModal]);
+
     const handleSend = () => {
         if (inputText.trim()) {
             const newMessage = {
@@ -46,11 +60,6 @@ export default function ChatScreen() {
             };
             setMessages(prev => [...prev, newMessage]);
             setInputText('');
-
-            // Navigate to login after first message as requested
-            setTimeout(() => {
-                navigation.navigate('login');
-            }, 1000);
         }
     };
 
@@ -147,6 +156,14 @@ export default function ChatScreen() {
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
+
+            {/* Blur overlay when login modal is active */}
+            {showLoginModal && (
+                <BlurView intensity={20} style={StyleSheet.absoluteFillObject} />
+            )}
+
+            {/* Login Modal - only render after delay */}
+            {showLoginModal && <LoginScreen />}
         </SafeAreaView>
     );
 }

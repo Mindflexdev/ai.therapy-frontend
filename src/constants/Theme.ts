@@ -1,7 +1,7 @@
 export const Theme = {
     colors: {
-        background: '#141413',
-        primary: '#D4AF37', // Golden Brown
+        background: '#1B1F26',
+        primary: '#ffdab0', // Soft Golden
         secondary: '#C5A368', // Muted Gold
         text: {
             primary: '#FFFFFF',
@@ -12,7 +12,7 @@ export const Theme = {
             user: '#3D2B1F', // Deep Chocolate Brown
             therapist: '#2A2A28', // Subtle dark brown/grey
         },
-        accent: '#D4AF37',
+        accent: '#ffdab0',
         danger: '#FF4444',
         success: '#4CAF50',
         border: '#2A2A28',
