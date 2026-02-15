@@ -38,11 +38,6 @@ export default function PaywallScreen() {
             </TouchableOpacity>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.illustrationWrap}>
-                    {/* Zen Premium Illustration Placeholder */}
-                    <View style={styles.illustration} />
-                </View>
-
                 <View style={styles.logoSection}>
                     <View style={styles.logoContainer}>
                         <Image
@@ -99,8 +94,12 @@ export default function PaywallScreen() {
 
                 <View style={styles.footerLinks}>
                     <TouchableOpacity><Text style={styles.footerLink}>Restore Purchases</Text></TouchableOpacity>
-                    <TouchableOpacity><Text style={styles.footerLink}>Terms</Text></TouchableOpacity>
-                    <TouchableOpacity><Text style={styles.footerLink}>Privacy</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/(main)/terms')}>
+                        <Text style={styles.footerLink}>Terms</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/(main)/privacy')}>
+                        <Text style={styles.footerLink}>Privacy</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -121,21 +120,6 @@ const styles = StyleSheet.create({
         paddingBottom: Theme.spacing.xxl,
         alignItems: 'center',
     },
-    illustrationWrap: {
-        width: '100%',
-        height: 180,
-        marginBottom: Theme.spacing.xl,
-        backgroundColor: 'rgba(212, 175, 55, 0.05)',
-        borderRadius: Theme.borderRadius.l,
-        overflow: 'hidden',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    illustration: {
-        width: '100%',
-        height: '100%',
-        // We'll replace this with the Zen art later
-    },
     logoSection: {
         alignItems: 'center',
         marginBottom: Theme.spacing.l,
@@ -147,8 +131,8 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     logoImage: {
-        width: 32,
-        height: 32,
+        width: 44,
+        height: 44,
     },
     logo: {
         fontSize: 24,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
-import { ChevronLeft, User, CreditCard, Sliders, Link, ShieldCheck, Bell, Globe, Lock, MessageCircle, ChevronRight, LogOut } from 'lucide-react-native';
+import { ChevronLeft, User, CreditCard, Sliders, Link, ShieldCheck, Bell, Globe, Lock, MessageCircle, ChevronRight, LogOut, FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 
@@ -65,7 +65,12 @@ export default function SettingsScreen() {
                     <SettingRow icon={Globe} label="Appearance" value="System" />
                     <SettingRow icon={MessageCircle} label="Input Language" value="EN" />
                     <SettingRow icon={Bell} label="Notifications" />
-                    <SettingRow icon={Lock} label="Privacy" />
+                </View>
+
+                <View style={styles.section}>
+                    <SettingRow icon={ShieldCheck} label="Safety & Legal" onPress={() => router.push('/(main)/safety')} />
+                    <SettingRow icon={Lock} label="Privacy Policy" onPress={() => router.push('/(main)/privacy')} />
+                    <SettingRow icon={FileText} label="Terms of Use" onPress={() => router.push('/(main)/terms')} />
                 </View>
 
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

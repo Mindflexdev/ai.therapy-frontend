@@ -1,6 +1,6 @@
 export const Theme = {
     colors: {
-        background: '#1B1F26',
+        background: '#262624',
         primary: '#EBCE80', // Soft Golden
         secondary: '#C5A368', // Muted Gold
         text: {

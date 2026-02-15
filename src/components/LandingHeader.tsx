@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Theme.colors.border,
   },
   brandingContainer: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -52,11 +52,11 @@ const styles = StyleSheet.create({
     color: Theme.colors.text.secondary,
     fontFamily: 'Inter-Regular',
     marginTop: 2,
-    marginLeft: 44,
+    textAlign: 'center',
   },
   logoImage: {
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
   },
   logo: {
     fontSize: 24,

@@ -1,7 +1,10 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Theme } from '../../constants/Theme';
+import { useRouter } from 'expo-router';
 
 export function Footer() {
+  const router = useRouter();
+
   return (
     <View style={styles.footer}>
       <Text style={styles.disclaimer}>
@@ -9,16 +12,20 @@ export function Footer() {
       </Text>
 
       <View style={styles.links}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(main)/terms')}>
           <Text style={styles.link}>Terms</Text>
         </TouchableOpacity>
         <Text style={styles.separator}>•</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(main)/privacy')}>
           <Text style={styles.link}>Privacy</Text>
         </TouchableOpacity>
         <Text style={styles.separator}>•</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(main)/cookies')}>
           <Text style={styles.link}>Cookies</Text>
+        </TouchableOpacity>
+        <Text style={styles.separator}>•</Text>
+        <TouchableOpacity onPress={() => router.push('/(main)/imprint')}>
+          <Text style={styles.link}>Imprint</Text>
         </TouchableOpacity>
       </View>
 

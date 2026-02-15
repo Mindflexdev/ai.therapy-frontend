@@ -24,9 +24,8 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
         }
     };
 
-    const handleLinkPress = (url: string) => {
-        // Placeholder for now, could be Linking.openURL(url)
-        console.log('Opening:', url);
+    const handleLinkPress = (route: string) => {
+        props.navigation.navigate(route);
     };
 
     return (
@@ -87,8 +86,8 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
                     <TouchableOpacity style={styles.footerLink} onPress={() => handleLinkPress('privacy')}>
                         <Text style={styles.footerLinkText}>Privacy Policy</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.footerLink} onPress={() => handleLinkPress('feedback')}>
-                        <Text style={styles.footerLinkText}>Feedback</Text>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => handleLinkPress('safety')}>
+                        <Text style={styles.footerLinkText}>Safety & Legal</Text>
                     </TouchableOpacity>
                 </View>
             </DrawerContentScrollView>
@@ -127,7 +126,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     brandingContainer: {
-        alignItems: 'flex-start',
+        alignItems: 'center',
     },
     logoContainer: {
         flexDirection: 'row',
@@ -139,11 +138,11 @@ const styles = StyleSheet.create({
         color: Theme.colors.text.secondary,
         fontFamily: 'Inter-Regular',
         marginTop: 2,
-        marginLeft: 32,
+        textAlign: 'center',
     },
     logoImage: {
-        width: 24,
-        height: 24,
+        width: 36,
+        height: 36,
     },
     logo: {
         fontSize: 20,
