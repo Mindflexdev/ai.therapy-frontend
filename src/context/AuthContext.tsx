@@ -16,6 +16,7 @@ type AuthContextType = {
     showLoginModal: boolean;
     loading: boolean;
     pendingTherapist: PendingTherapist;
+    pendingTherapistLoaded: boolean;
     loginWithOtp: (email: string) => Promise<{ error: any }>;
     loginWithGoogle: (therapistName?: string) => Promise<void>;
     loginWithApple: (therapistName?: string) => Promise<void>;
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
     showLoginModal: false,
     loading: true,
     pendingTherapist: null,
+    pendingTherapistLoaded: false,
     loginWithOtp: async () => ({ error: null }),
     loginWithGoogle: async () => {},
     loginWithApple: async () => {},
@@ -51,6 +53,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [pendingTherapist, setPendingTherapistState] = useState<PendingTherapist>(null);
+    const [pendingTherapistLoaded, setPendingTherapistLoaded] = useState(false);
 
     const setPendingTherapist = (therapist: PendingTherapist) => {
         if (therapist) {
@@ -82,6 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
                 }
             }
+            setPendingTherapistLoaded(true);
         });
 
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -172,6 +176,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             showLoginModal,
             loading,
             pendingTherapist,
+            pendingTherapistLoaded,
             loginWithOtp,
             loginWithGoogle,
             loginWithApple,

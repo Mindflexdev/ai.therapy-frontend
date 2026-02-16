@@ -48,12 +48,15 @@ import { useRouter } from 'expo-router';
 // Handles redirect after OAuth login (Google OAuth does a full-page redirect,
 // so we persist the selected therapist and navigate to chat once session is detected)
 function OAuthRedirectHandler() {
-    const { isLoggedIn, loading, pendingTherapist } = useAuth();
+    const { isLoggedIn, loading, pendingTherapist, pendingTherapistLoaded } = useAuth();
     const router = useRouter();
     const hasRedirected = useRef(false);
 
     useEffect(() => {
-        if (!loading && isLoggedIn && pendingTherapist?.name && !hasRedirected.current) {
+        // Wait for BOTH auth session AND pendingTherapist to be loaded from AsyncStorage
+        // before making any redirect decision. This prevents the race condition where
+        // auth loads first but pendingTherapist hasn't been read from storage yet.
+        if (!loading && pendingTherapistLoaded && isLoggedIn && pendingTherapist?.name && !hasRedirected.current) {
             hasRedirected.current = true;
             // Don't clear pendingTherapist here — chat.tsx needs the pendingMessage
             // Chat screen will clear it after restoring the draft message
@@ -62,7 +65,7 @@ function OAuthRedirectHandler() {
                 params: { name: pendingTherapist.name }
             });
         }
-    }, [isLoggedIn, loading, pendingTherapist]);
+    }, [isLoggedIn, loading, pendingTherapist, pendingTherapistLoaded]);
 
     return null;
 }
