@@ -173,11 +173,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const loginWithGoogle = async (therapistName?: string) => {
         // Save pending therapist before OAuth redirect (page will fully reload)
-        // Preserve any existing pendingMessage (draft from chat input)
-        // MUST await to ensure data is written to AsyncStorage before browser redirects
-        if (therapistName) {
+        // Use therapistName if provided, otherwise fall back to existing pendingTherapist
+        // (which was set by chat.tsx handleSend before opening the login modal)
+        const nameToSave = therapistName || pendingTherapist?.name;
+        console.log('[Auth] loginWithGoogle called, therapistName:', therapistName, 'nameToSave:', nameToSave);
+        if (nameToSave) {
             await setPendingTherapist({
-                name: therapistName,
+                name: nameToSave,
                 pendingMessage: pendingTherapist?.pendingMessage,
             });
         }
@@ -195,11 +197,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const loginWithApple = async (therapistName?: string) => {
         // Save pending therapist before OAuth redirect (page will fully reload)
-        // Preserve any existing pendingMessage (draft from chat input)
-        // MUST await to ensure data is written to AsyncStorage before browser redirects
-        if (therapistName) {
+        // Use therapistName if provided, otherwise fall back to existing pendingTherapist
+        const nameToSave = therapistName || pendingTherapist?.name;
+        console.log('[Auth] loginWithApple called, therapistName:', therapistName, 'nameToSave:', nameToSave);
+        if (nameToSave) {
             await setPendingTherapist({
-                name: therapistName,
+                name: nameToSave,
                 pendingMessage: pendingTherapist?.pendingMessage,
             });
         }
