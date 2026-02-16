@@ -55,29 +55,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [pendingTherapist, setPendingTherapistState] = useState<PendingTherapist>(null);
     const [pendingTherapistLoaded, setPendingTherapistLoaded] = useState(false);
 
+    // Use localStorage directly on web for SYNCHRONOUS writes.
+    // AsyncStorage on web wraps localStorage in a Promise, which means the write
+    // may not complete before signInWithOAuth redirects the browser away.
+    // localStorage.setItem is synchronous and guaranteed to persist before redirect.
     const setPendingTherapist = async (therapist: PendingTherapist) => {
         if (therapist) {
             const withTimestamp = { ...therapist, timestamp: Date.now() };
             console.log('[Auth] setPendingTherapist:', withTimestamp.name, 'timestamp:', withTimestamp.timestamp);
             setPendingTherapistState(withTimestamp);
-            await AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
-            console.log('[Auth] setPendingTherapist: AsyncStorage write complete');
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.localStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
+            } else {
+                await AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
+            }
+            console.log('[Auth] setPendingTherapist: write complete');
         } else {
             console.log('[Auth] setPendingTherapist: clearing');
             setPendingTherapistState(null);
-            await AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.localStorage.removeItem(PENDING_THERAPIST_KEY);
+            } else {
+                await AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+            }
         }
     };
 
     const clearPendingTherapist = () => {
         setPendingTherapistState(null);
-        AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            window.localStorage.removeItem(PENDING_THERAPIST_KEY);
+        } else {
+            AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+        }
     };
 
     useEffect(() => {
         // On app load, check for pending therapist from before OAuth redirect
         // Expire entries older than 10 minutes (stale from previous sessions)
-        AsyncStorage.getItem(PENDING_THERAPIST_KEY).then((value) => {
+        // On web, read directly from localStorage (synchronous) for reliability
+        const loadPendingTherapist = () => {
+            let value: string | null = null;
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                value = window.localStorage.getItem(PENDING_THERAPIST_KEY);
+            }
             console.log('[Auth] pendingTherapist from storage:', value);
             if (value) {
                 const parsed = JSON.parse(value);
@@ -86,13 +107,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     setPendingTherapistState(parsed);
                     console.log('[Auth] pendingTherapist restored:', parsed.name);
                 } else {
-                    // Stale data — remove it
                     console.log('[Auth] pendingTherapist expired, removing');
-                    AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+                    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                        window.localStorage.removeItem(PENDING_THERAPIST_KEY);
+                    } else {
+                        AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+                    }
                 }
             }
             setPendingTherapistLoaded(true);
-        });
+        };
+
+        if (Platform.OS === 'web') {
+            // Synchronous on web — no delay
+            loadPendingTherapist();
+        } else {
+            // Async on native
+            AsyncStorage.getItem(PENDING_THERAPIST_KEY).then((value) => {
+                // Re-use same logic but with the value from AsyncStorage
+                console.log('[Auth] pendingTherapist from storage:', value);
+                if (value) {
+                    const parsed = JSON.parse(value);
+                    const TEN_MINUTES = 10 * 60 * 1000;
+                    if (parsed.timestamp && (Date.now() - parsed.timestamp) < TEN_MINUTES) {
+                        setPendingTherapistState(parsed);
+                    } else {
+                        AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+                    }
+                }
+                setPendingTherapistLoaded(true);
+            });
+        }
 
         supabase.auth.getSession().then(({ data: { session } }) => {
             console.log('[Auth] getSession result:', session ? `logged in as ${session.user?.email}` : 'no session');
