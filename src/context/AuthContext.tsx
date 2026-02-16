@@ -66,6 +66,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setPendingTherapistState(withTimestamp);
             if (Platform.OS === 'web' && typeof window !== 'undefined') {
                 window.localStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
+                // Verify the write succeeded
+                const verify = window.localStorage.getItem(PENDING_THERAPIST_KEY);
+                console.log('[Auth] localStorage verification after write:', verify ? 'OK' : 'FAILED!', verify);
             } else {
                 await AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
             }
@@ -82,6 +85,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const clearPendingTherapist = () => {
+        console.log('[Auth] clearPendingTherapist called!');
+        console.trace('[Auth] clearPendingTherapist stack trace');
         setPendingTherapistState(null);
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
             window.localStorage.removeItem(PENDING_THERAPIST_KEY);
@@ -176,12 +181,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Use therapistName if provided, otherwise fall back to existing pendingTherapist
         // (which was set by chat.tsx handleSend before opening the login modal)
         const nameToSave = therapistName || pendingTherapist?.name;
-        console.log('[Auth] loginWithGoogle called, therapistName:', therapistName, 'nameToSave:', nameToSave);
+        console.log('[Auth] loginWithGoogle called, therapistName:', therapistName, 'pendingTherapist:', JSON.stringify(pendingTherapist), 'nameToSave:', nameToSave);
         if (nameToSave) {
             await setPendingTherapist({
                 name: nameToSave,
                 pendingMessage: pendingTherapist?.pendingMessage,
             });
+        }
+        // Final check: verify localStorage has the data right before redirect
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            console.log('[Auth] loginWithGoogle - localStorage BEFORE redirect:', window.localStorage.getItem(PENDING_THERAPIST_KEY));
         }
         const redirectTo = Platform.OS === 'web'
             ? window.location.origin

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Theme } from '../../src/constants/Theme';
@@ -28,9 +28,13 @@ export default function ChatScreen() {
     const { showLoginModal, setShowLoginModal, isLoggedIn, setPendingTherapist, pendingTherapist, clearPendingTherapist } = useAuth();
 
     // Restore draft message from pendingTherapist (saved before OAuth redirect)
-    // Only auto-send if the user is actually logged in (not stale data from a previous session)
+    // Only auto-send if the user is actually logged in
+    // IMPORTANT: Do NOT clear pendingTherapist when not logged in — the user may be
+    // about to log in via OAuth, and we need the data to survive the redirect!
+    const hasSentDraft = useRef(false);
     useEffect(() => {
-        if (isLoggedIn && pendingTherapist?.pendingMessage) {
+        if (isLoggedIn && pendingTherapist?.pendingMessage && !hasSentDraft.current) {
+            hasSentDraft.current = true;
             const draftMessage = pendingTherapist.pendingMessage;
             clearPendingTherapist();
             // Wait for the initial therapist greeting to load, then send the draft
@@ -43,9 +47,6 @@ export default function ChatScreen() {
                 }]);
             }, 1800); // Slightly after the 1500ms greeting delay
             return () => clearTimeout(timer);
-        } else if (!isLoggedIn && pendingTherapist?.pendingMessage) {
-            // Not logged in — clear stale pending data
-            clearPendingTherapist();
         }
     }, [isLoggedIn]);
 
