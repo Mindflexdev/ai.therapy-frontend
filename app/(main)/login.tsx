@@ -29,27 +29,13 @@ export default function LoginScreen() {
         }
     }, [isLoggedIn]);
 
-    // Save therapist info before Google OAuth redirect
-    // Preserve any existing pendingMessage (draft from chat input)
+    // loginWithGoogle/loginWithApple already handle setPendingTherapist internally
+    // and await the AsyncStorage write before triggering the OAuth redirect
     const handleGoogleLogin = async () => {
-        if (name) {
-            setPendingTherapist({
-                name: name as string,
-                pendingMessage: pendingTherapist?.pendingMessage,
-            });
-        }
         await loginWithGoogle(name as string);
     };
 
-    // Save therapist info before Apple OAuth redirect
-    // Preserve any existing pendingMessage (draft from chat input)
     const handleAppleLogin = async () => {
-        if (name) {
-            setPendingTherapist({
-                name: name as string,
-                pendingMessage: pendingTherapist?.pendingMessage,
-            });
-        }
         await loginWithApple(name as string);
     };
 
@@ -61,7 +47,7 @@ export default function LoginScreen() {
         }
         // Save therapist info so the magic link redirect can navigate to chat
         if (name) {
-            setPendingTherapist({
+            await setPendingTherapist({
                 name: name as string,
                 pendingMessage: pendingTherapist?.pendingMessage,
             });

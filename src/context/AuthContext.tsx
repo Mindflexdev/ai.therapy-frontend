@@ -23,7 +23,7 @@ type AuthContextType = {
     logout: () => Promise<void>;
     selectTherapist: (id: string) => void;
     setShowLoginModal: (show: boolean) => void;
-    setPendingTherapist: (therapist: PendingTherapist) => void;
+    setPendingTherapist: (therapist: PendingTherapist) => Promise<void>;
     clearPendingTherapist: () => void;
 };
 
@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextType>({
     logout: async () => {},
     selectTherapist: () => {},
     setShowLoginModal: () => {},
-    setPendingTherapist: () => {},
+    setPendingTherapist: async () => {},
     clearPendingTherapist: () => {},
 });
 
@@ -55,14 +55,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [pendingTherapist, setPendingTherapistState] = useState<PendingTherapist>(null);
     const [pendingTherapistLoaded, setPendingTherapistLoaded] = useState(false);
 
-    const setPendingTherapist = (therapist: PendingTherapist) => {
+    const setPendingTherapist = async (therapist: PendingTherapist) => {
         if (therapist) {
             const withTimestamp = { ...therapist, timestamp: Date.now() };
             setPendingTherapistState(withTimestamp);
-            AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
+            await AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
         } else {
             setPendingTherapistState(null);
-            AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+            await AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
         }
     };
 
@@ -121,8 +121,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const loginWithGoogle = async (therapistName?: string) => {
         // Save pending therapist before OAuth redirect (page will fully reload)
         // Preserve any existing pendingMessage (draft from chat input)
+        // MUST await to ensure data is written to AsyncStorage before browser redirects
         if (therapistName) {
-            setPendingTherapist({
+            await setPendingTherapist({
                 name: therapistName,
                 pendingMessage: pendingTherapist?.pendingMessage,
             });
@@ -142,8 +143,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const loginWithApple = async (therapistName?: string) => {
         // Save pending therapist before OAuth redirect (page will fully reload)
         // Preserve any existing pendingMessage (draft from chat input)
+        // MUST await to ensure data is written to AsyncStorage before browser redirects
         if (therapistName) {
-            setPendingTherapist({
+            await setPendingTherapist({
                 name: therapistName,
                 pendingMessage: pendingTherapist?.pendingMessage,
             });

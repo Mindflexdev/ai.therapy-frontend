@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Image, Text, Animated, Easing } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Image, Text, Animated, Easing, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Theme } from '../src/constants/Theme';
 import { useAuth } from '../src/context/AuthContext';
@@ -26,9 +26,16 @@ export default function Onboarding() {
   const { selectTherapist, isLoggedIn, loading, pendingTherapist, pendingTherapistLoaded } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // While we're still loading auth or pendingTherapist from storage, show nothing
+  // Detect if we're returning from an OAuth redirect (Supabase puts tokens in the URL hash)
+  // While Supabase is parsing these tokens, isLoggedIn is still false — so we need this
+  // additional check to show the loading screen instead of flashing the landing page
+  const hasOAuthTokensInUrl = Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    window.location.hash.includes('access_token');
+
+  // While we're still loading auth, pendingTherapist, or processing OAuth tokens, show loading
   // (prevents flash of landing page before we know if we need to redirect)
-  if (!pendingTherapistLoaded || loading) {
+  if (!pendingTherapistLoaded || loading || hasOAuthTokensInUrl) {
     return (
       <View style={styles.loadingContainer}>
         <Image
