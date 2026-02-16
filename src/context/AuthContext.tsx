@@ -58,23 +58,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Use localStorage directly on web for SYNCHRONOUS writes.
     // AsyncStorage on web wraps localStorage in a Promise, which means the write
     // may not complete before signInWithOAuth redirects the browser away.
-    // localStorage.setItem is synchronous and guaranteed to persist before redirect.
     const setPendingTherapist = async (therapist: PendingTherapist) => {
         if (therapist) {
             const withTimestamp = { ...therapist, timestamp: Date.now() };
-            console.log('[Auth] setPendingTherapist:', withTimestamp.name, 'timestamp:', withTimestamp.timestamp);
             setPendingTherapistState(withTimestamp);
             if (Platform.OS === 'web' && typeof window !== 'undefined') {
                 window.localStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
-                // Verify the write succeeded
-                const verify = window.localStorage.getItem(PENDING_THERAPIST_KEY);
-                console.log('[Auth] localStorage verification after write:', verify ? 'OK' : 'FAILED!', verify);
             } else {
                 await AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
             }
-            console.log('[Auth] setPendingTherapist: write complete');
         } else {
-            console.log('[Auth] setPendingTherapist: clearing');
             setPendingTherapistState(null);
             if (Platform.OS === 'web' && typeof window !== 'undefined') {
                 window.localStorage.removeItem(PENDING_THERAPIST_KEY);
@@ -85,8 +78,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const clearPendingTherapist = () => {
-        console.log('[Auth] clearPendingTherapist called!');
-        console.trace('[Auth] clearPendingTherapist stack trace');
         setPendingTherapistState(null);
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
             window.localStorage.removeItem(PENDING_THERAPIST_KEY);
@@ -96,23 +87,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     useEffect(() => {
-        // On app load, check for pending therapist from before OAuth redirect
-        // Expire entries older than 10 minutes (stale from previous sessions)
-        // On web, read directly from localStorage (synchronous) for reliability
+        // On app load, check for pending therapist from before OAuth redirect.
+        // Check sources in order of reliability:
+        // 1. URL search params (most reliable — data travels with the redirect URL)
+        // 2. localStorage (fallback — can fail if cross-origin redirect happens)
         const loadPendingTherapist = () => {
+            // PRIMARY: Check URL search params (survives cross-origin OAuth redirects)
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlTherapist = urlParams.get('pendingTherapist');
+                const urlMessage = urlParams.get('pendingMessage');
+                if (urlTherapist) {
+                    const data: PendingTherapist = {
+                        name: urlTherapist,
+                        pendingMessage: urlMessage || undefined,
+                        timestamp: Date.now(),
+                    };
+                    setPendingTherapistState(data);
+                    // Also save to localStorage so chat.tsx can access it
+                    window.localStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(data));
+                    // Clean URL cosmetically (remove query params without page reload)
+                    const cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete('pendingTherapist');
+                    cleanUrl.searchParams.delete('pendingMessage');
+                    window.history.replaceState({}, '', cleanUrl.toString());
+                    setPendingTherapistLoaded(true);
+                    return;
+                }
+            }
+
+            // FALLBACK: Check localStorage
             let value: string | null = null;
             if (Platform.OS === 'web' && typeof window !== 'undefined') {
                 value = window.localStorage.getItem(PENDING_THERAPIST_KEY);
             }
-            console.log('[Auth] pendingTherapist from storage:', value);
             if (value) {
                 const parsed = JSON.parse(value);
                 const TEN_MINUTES = 10 * 60 * 1000;
                 if (parsed.timestamp && (Date.now() - parsed.timestamp) < TEN_MINUTES) {
                     setPendingTherapistState(parsed);
-                    console.log('[Auth] pendingTherapist restored:', parsed.name);
                 } else {
-                    console.log('[Auth] pendingTherapist expired, removing');
                     if (Platform.OS === 'web' && typeof window !== 'undefined') {
                         window.localStorage.removeItem(PENDING_THERAPIST_KEY);
                     } else {
@@ -129,8 +143,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
             // Async on native
             AsyncStorage.getItem(PENDING_THERAPIST_KEY).then((value) => {
-                // Re-use same logic but with the value from AsyncStorage
-                console.log('[Auth] pendingTherapist from storage:', value);
                 if (value) {
                     const parsed = JSON.parse(value);
                     const TEN_MINUTES = 10 * 60 * 1000;
@@ -145,7 +157,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         supabase.auth.getSession().then(({ data: { session } }) => {
-            console.log('[Auth] getSession result:', session ? `logged in as ${session.user?.email}` : 'no session');
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
@@ -153,7 +164,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (_event, session) => {
-                console.log('[Auth] onAuthStateChange:', _event, session ? `logged in as ${session.user?.email}` : 'no session');
                 setSession(session);
                 setUser(session?.user ?? null);
                 if (session) {
@@ -181,20 +191,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Use therapistName if provided, otherwise fall back to existing pendingTherapist
         // (which was set by chat.tsx handleSend before opening the login modal)
         const nameToSave = therapistName || pendingTherapist?.name;
-        console.log('[Auth] loginWithGoogle called, therapistName:', therapistName, 'pendingTherapist:', JSON.stringify(pendingTherapist), 'nameToSave:', nameToSave);
+        const messageToSave = pendingTherapist?.pendingMessage || '';
+
+        const baseUrl = Platform.OS === 'web' ? window.location.origin : 'ai-therapy://';
+        let redirectTo = baseUrl;
+
+        // Encode therapist info in the redirect URL (survives cross-origin redirects)
+        if (Platform.OS === 'web' && nameToSave) {
+            const url = new URL(baseUrl);
+            url.searchParams.set('pendingTherapist', nameToSave);
+            if (messageToSave) {
+                url.searchParams.set('pendingMessage', messageToSave);
+            }
+            redirectTo = url.toString();
+        }
+
+        // Also write to localStorage as fallback
         if (nameToSave) {
             await setPendingTherapist({
                 name: nameToSave,
-                pendingMessage: pendingTherapist?.pendingMessage,
+                pendingMessage: messageToSave || undefined,
             });
         }
-        // Final check: verify localStorage has the data right before redirect
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            console.log('[Auth] loginWithGoogle - localStorage BEFORE redirect:', window.localStorage.getItem(PENDING_THERAPIST_KEY));
-        }
-        const redirectTo = Platform.OS === 'web'
-            ? window.location.origin
-            : 'ai-therapy://';
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo },
@@ -208,16 +227,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Save pending therapist before OAuth redirect (page will fully reload)
         // Use therapistName if provided, otherwise fall back to existing pendingTherapist
         const nameToSave = therapistName || pendingTherapist?.name;
-        console.log('[Auth] loginWithApple called, therapistName:', therapistName, 'nameToSave:', nameToSave);
+        const messageToSave = pendingTherapist?.pendingMessage || '';
+
+        const baseUrl = Platform.OS === 'web' ? window.location.origin : 'ai-therapy://';
+        let redirectTo = baseUrl;
+
+        // Encode therapist info in the redirect URL (survives cross-origin redirects)
+        if (Platform.OS === 'web' && nameToSave) {
+            const url = new URL(baseUrl);
+            url.searchParams.set('pendingTherapist', nameToSave);
+            if (messageToSave) {
+                url.searchParams.set('pendingMessage', messageToSave);
+            }
+            redirectTo = url.toString();
+        }
+
+        // Also write to localStorage as fallback
         if (nameToSave) {
             await setPendingTherapist({
                 name: nameToSave,
-                pendingMessage: pendingTherapist?.pendingMessage,
+                pendingMessage: messageToSave || undefined,
             });
         }
-        const redirectTo = Platform.OS === 'web'
-            ? window.location.origin
-            : 'ai-therapy://';
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'apple',
             options: { redirectTo },
