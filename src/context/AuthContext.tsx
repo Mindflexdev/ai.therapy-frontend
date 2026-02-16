@@ -18,6 +18,7 @@ type AuthContextType = {
     pendingTherapist: PendingTherapist;
     loginWithOtp: (email: string) => Promise<{ error: any }>;
     loginWithGoogle: (therapistName?: string) => Promise<void>;
+    loginWithApple: (therapistName?: string) => Promise<void>;
     logout: () => Promise<void>;
     selectTherapist: (id: string) => void;
     setShowLoginModal: (show: boolean) => void;
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
     pendingTherapist: null,
     loginWithOtp: async () => ({ error: null }),
     loginWithGoogle: async () => {},
+    loginWithApple: async () => {},
     logout: async () => {},
     selectTherapist: () => {},
     setShowLoginModal: () => {},
@@ -92,7 +94,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const loginWithOtp = async (email: string) => {
-        const { error } = await supabase.auth.signInWithOtp({ email });
+        const redirectTo = Platform.OS === 'web'
+            ? window.location.origin
+            : 'ai-therapy://';
+        const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: redirectTo },
+        });
         return { error };
     };
 
@@ -117,6 +125,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const loginWithApple = async (therapistName?: string) => {
+        // Save pending therapist before OAuth redirect (page will fully reload)
+        // Preserve any existing pendingMessage (draft from chat input)
+        if (therapistName) {
+            setPendingTherapist({
+                name: therapistName,
+                pendingMessage: pendingTherapist?.pendingMessage,
+            });
+        }
+        const redirectTo = Platform.OS === 'web'
+            ? window.location.origin
+            : 'ai-therapy://';
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'apple',
+            options: { redirectTo },
+        });
+        if (error) {
+            console.error('Apple login error:', error.message);
+        }
+    };
+
     const logout = async () => {
         await supabase.auth.signOut();
         setSelectedTherapistId(null);
@@ -135,6 +164,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             pendingTherapist,
             loginWithOtp,
             loginWithGoogle,
+            loginWithApple,
             logout,
             selectTherapist,
             setShowLoginModal,

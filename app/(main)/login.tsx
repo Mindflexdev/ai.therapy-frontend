@@ -9,12 +9,14 @@ import { Footer } from '../../src/components/sections/Footer';
 
 export default function LoginScreen() {
     const router = useRouter();
-    const { showLoginModal, setShowLoginModal, loginWithOtp, loginWithGoogle, isLoggedIn, setPendingTherapist, pendingTherapist } = useAuth();
+    const { showLoginModal, setShowLoginModal, loginWithOtp, loginWithGoogle, loginWithApple, isLoggedIn, setPendingTherapist, pendingTherapist } = useAuth();
     const { name, image } = useLocalSearchParams();
     const { height } = useWindowDimensions();
     const isSmallScreen = height < 700;
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
 
     // After successful login (email magic link), navigate to chat
     useEffect(() => {
@@ -39,18 +41,38 @@ export default function LoginScreen() {
         await loginWithGoogle(name as string);
     };
 
+    // Save therapist info before Apple OAuth redirect
+    // Preserve any existing pendingMessage (draft from chat input)
+    const handleAppleLogin = async () => {
+        if (name) {
+            setPendingTherapist({
+                name: name as string,
+                pendingMessage: pendingTherapist?.pendingMessage,
+            });
+        }
+        await loginWithApple(name as string);
+    };
+
     const handleEmailContinue = async () => {
+        setErrorMsg('');
         if (!email.trim()) {
-            Alert.alert('Error', 'Please enter your email address.');
+            setErrorMsg('Please enter your email address.');
             return;
+        }
+        // Save therapist info so the magic link redirect can navigate to chat
+        if (name) {
+            setPendingTherapist({
+                name: name as string,
+                pendingMessage: pendingTherapist?.pendingMessage,
+            });
         }
         setIsLoading(true);
         const { error } = await loginWithOtp(email.trim());
         setIsLoading(false);
         if (error) {
-            Alert.alert('Error', error.message);
+            setErrorMsg(error.message);
         } else {
-            Alert.alert('Check your email', 'We sent you a magic link to sign in.');
+            setEmailSent(true);
         }
     };
 
@@ -99,10 +121,10 @@ export default function LoginScreen() {
 
                 <View style={styles.form}>
                     {/* Apple Button */}
-                    <TouchableOpacity style={styles.appleSocialBtn} onPress={showComingSoon}>
+                    <TouchableOpacity style={styles.appleSocialBtn} onPress={handleAppleLogin}>
                         <View style={styles.iconWrapper}>
-                            <Svg width="20" height="20" viewBox="0 0 24 24" fill="black">
-                                <Path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.74.79 0 1.96-.71 3.28-.66 1.13.04 1.98.42 2.61.98-2.19 1.34-1.84 4.5 0 5.25-1.28 2.65-3.08 4.63-4.97 6.66zM13 5.08c-.28 1.99-1.88 3.54-3.9 3.42C8.88 6.43 10.5 4.9 13 5.08z" />
+                            <Svg width="18" height="18" viewBox="0 0 814 1000" fill="black">
+                                <Path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57.8-155.5-127.4c-58.3-81.3-105.9-207.6-105.9-328.2 0-193.1 125.7-295.6 249.4-295.6 65.7 0 120.5 43.1 161.7 43.1 39.2 0 100.4-45.8 174.7-45.8 28.2 0 130 2.5 197.3 95.2zM554.1 159.4c31.1-36.9 53.1-88.1 53.1-139.4 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.9 32.4-57.1 83.6-57.1 135.6 0 7.8.6 15.6 1.3 18.2 2.5.6 6.4.6 10.2.6 45.8.1 101.7-30.4 141.5-70.7z" />
                             </Svg>
                         </View>
                         <Text style={styles.appleBtnText}>Continue with Apple</Text>
@@ -127,24 +149,39 @@ export default function LoginScreen() {
                         <View style={styles.line} />
                     </View>
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter your email"
-                        placeholderTextColor={Theme.colors.text.muted}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={setEmail}
-                        editable={!isLoading}
-                    />
+                    {emailSent ? (
+                        <View style={styles.emailSentBox}>
+                            <Text style={styles.emailSentTitle}>Check your email</Text>
+                            <Text style={styles.emailSentText}>
+                                We sent a magic link to <Text style={{ color: Theme.colors.text.primary }}>{email}</Text>. Click the link in the email to sign in.
+                            </Text>
+                            <TouchableOpacity onPress={() => { setEmailSent(false); setEmail(''); }} style={styles.emailSentRetry}>
+                                <Text style={styles.emailSentRetryText}>Use a different email</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <>
+                            {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter your email"
+                                placeholderTextColor={Theme.colors.text.muted}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                value={email}
+                                onChangeText={(t) => { setEmail(t); setErrorMsg(''); }}
+                                editable={!isLoading}
+                            />
 
-                    <TouchableOpacity style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]} onPress={handleEmailContinue} disabled={isLoading}>
-                        {isLoading ? (
-                            <ActivityIndicator color={Theme.colors.background} />
-                        ) : (
-                            <Text style={styles.primaryBtnText}>Continue with Email</Text>
-                        )}
-                    </TouchableOpacity>
+                            <TouchableOpacity style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]} onPress={handleEmailContinue} disabled={isLoading}>
+                                {isLoading ? (
+                                    <ActivityIndicator color={Theme.colors.background} />
+                                ) : (
+                                    <Text style={styles.primaryBtnText}>Continue with Email</Text>
+                                )}
+                            </TouchableOpacity>
+                        </>
+                    )}
 
                     <Text style={styles.footerNote}>
                         By continuing, you acknowledge our{' '}
@@ -313,6 +350,44 @@ const styles = StyleSheet.create({
         color: Theme.colors.background,
         fontFamily: 'Inter-Bold',
         fontSize: 16,
+    },
+    errorText: {
+        color: Theme.colors.danger,
+        fontSize: 14,
+        fontFamily: 'Inter-Regular',
+        marginBottom: Theme.spacing.m,
+        textAlign: 'center',
+    },
+    emailSentBox: {
+        width: '100%',
+        backgroundColor: 'rgba(212, 175, 55, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(212, 175, 55, 0.3)',
+        borderRadius: Theme.borderRadius.m,
+        padding: Theme.spacing.l,
+        alignItems: 'center',
+    },
+    emailSentTitle: {
+        color: Theme.colors.primary,
+        fontFamily: 'Inter-Bold',
+        fontSize: 18,
+        marginBottom: Theme.spacing.s,
+    },
+    emailSentText: {
+        color: Theme.colors.text.secondary,
+        fontSize: 14,
+        fontFamily: 'Inter-Regular',
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    emailSentRetry: {
+        marginTop: Theme.spacing.l,
+    },
+    emailSentRetryText: {
+        color: Theme.colors.text.muted,
+        fontSize: 14,
+        fontFamily: 'Inter-Regular',
+        textDecorationLine: 'underline',
     },
     footerNote: {
         color: Theme.colors.text.muted,

@@ -28,9 +28,9 @@ export default function ChatScreen() {
     const { showLoginModal, setShowLoginModal, isLoggedIn, setPendingTherapist, pendingTherapist, clearPendingTherapist } = useAuth();
 
     // Restore draft message from pendingTherapist (saved before OAuth redirect)
-    // Auto-send it as a chat message so the user sees it in the conversation
+    // Only auto-send if the user is actually logged in (not stale data from a previous session)
     useEffect(() => {
-        if (pendingTherapist?.pendingMessage) {
+        if (isLoggedIn && pendingTherapist?.pendingMessage) {
             const draftMessage = pendingTherapist.pendingMessage;
             clearPendingTherapist();
             // Wait for the initial therapist greeting to load, then send the draft
@@ -43,8 +43,11 @@ export default function ChatScreen() {
                 }]);
             }, 1800); // Slightly after the 1500ms greeting delay
             return () => clearTimeout(timer);
+        } else if (!isLoggedIn && pendingTherapist?.pendingMessage) {
+            // Not logged in — clear stale pending data
+            clearPendingTherapist();
         }
-    }, []);
+    }, [isLoggedIn]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
