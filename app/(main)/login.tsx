@@ -165,10 +165,9 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: Theme.colors.text.secondary,
         fontFamily: 'Inter-Regular',
-        textAlign: 'center',
         marginTop: Theme.spacing.xs,
         marginBottom: Theme.spacing.l,
-        alignSelf: 'center',
+        marginLeft: 48,
     },
     tagline: {
         fontSize: 20,
@@ -189,7 +188,7 @@ const styles = StyleSheet.create({
     logoImageSmall: {
         width: 48,
         height: 48,
-        marginTop: 2,
+        marginTop: 6,
     },
     form: {
         width: '100%',

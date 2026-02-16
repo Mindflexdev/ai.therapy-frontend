@@ -133,6 +133,7 @@ const styles = StyleSheet.create({
     logoImage: {
         width: 44,
         height: 44,
+        marginTop: 6,
     },
     logo: {
         fontSize: 24,
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
         color: Theme.colors.text.secondary,
         fontFamily: 'Inter-Regular',
         marginTop: 2,
-        textAlign: 'center',
+        marginLeft: 44,
     },
     title: {
         fontSize: 24,

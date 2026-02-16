@@ -138,11 +138,12 @@ const styles = StyleSheet.create({
         color: Theme.colors.text.secondary,
         fontFamily: 'Inter-Regular',
         marginTop: 2,
-        textAlign: 'center',
+        marginLeft: 36,
     },
     logoImage: {
         width: 36,
         height: 36,
+        marginTop: 4,
     },
     logo: {
         fontSize: 20,

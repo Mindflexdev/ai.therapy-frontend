@@ -52,13 +52,12 @@ const styles = StyleSheet.create({
     color: Theme.colors.text.secondary,
     fontFamily: 'Inter-Regular',
     marginTop: 2,
-    textAlign: 'center',
-    alignSelf: 'center',
+    marginLeft: 44,
   },
   logoImage: {
     width: 44,
     height: 44,
-    marginTop: 2,
+    marginTop: 4,
   },
   logo: {
     fontSize: 24,
