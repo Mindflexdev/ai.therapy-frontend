@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PENDING_THERAPIST_KEY = 'pendingTherapist';
 
-type PendingTherapist = { name: string; pendingMessage?: string } | null;
+type PendingTherapist = { name: string; pendingMessage?: string; timestamp?: number } | null;
 
 type AuthContextType = {
     isLoggedIn: boolean;
@@ -53,10 +53,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [pendingTherapist, setPendingTherapistState] = useState<PendingTherapist>(null);
 
     const setPendingTherapist = (therapist: PendingTherapist) => {
-        setPendingTherapistState(therapist);
         if (therapist) {
-            AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(therapist));
+            const withTimestamp = { ...therapist, timestamp: Date.now() };
+            setPendingTherapistState(withTimestamp);
+            AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
         } else {
+            setPendingTherapistState(null);
             AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
         }
     };
@@ -68,9 +70,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         // On app load, check for pending therapist from before OAuth redirect
+        // Expire entries older than 5 minutes (stale from previous sessions)
         AsyncStorage.getItem(PENDING_THERAPIST_KEY).then((value) => {
             if (value) {
-                setPendingTherapistState(JSON.parse(value));
+                const parsed = JSON.parse(value);
+                const FIVE_MINUTES = 5 * 60 * 1000;
+                if (parsed.timestamp && (Date.now() - parsed.timestamp) < FIVE_MINUTES) {
+                    setPendingTherapistState(parsed);
+                } else {
+                    // Stale data — remove it
+                    AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
+                }
             }
         });
 
