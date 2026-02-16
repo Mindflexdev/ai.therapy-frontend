@@ -40,7 +40,8 @@ export function HeroSection({ therapists, selectedId, onSelectTherapist }: Props
 const styles = StyleSheet.create({
   section: {
     paddingHorizontal: Theme.spacing.m,
-    paddingVertical: Theme.spacing.xxl,
+    paddingTop: Theme.spacing.l,
+    paddingBottom: Theme.spacing.xxl,
     alignItems: 'center',
   },
   heading: {
