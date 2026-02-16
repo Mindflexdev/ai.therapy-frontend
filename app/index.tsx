@@ -33,6 +33,15 @@ export default function Onboarding() {
     typeof window !== 'undefined' &&
     window.location.hash.includes('access_token');
 
+  console.log('[Index] State:', {
+    pendingTherapistLoaded,
+    loading,
+    hasOAuthTokensInUrl,
+    isLoggedIn,
+    pendingTherapistName: pendingTherapist?.name || null,
+    hash: Platform.OS === 'web' ? window.location.hash.substring(0, 50) : 'N/A',
+  });
+
   // While we're still loading auth, pendingTherapist, or processing OAuth tokens, show loading
   // (prevents flash of landing page before we know if we need to redirect)
   if (!pendingTherapistLoaded || loading || hasOAuthTokensInUrl) {

@@ -53,11 +53,19 @@ function OAuthRedirectHandler() {
     const hasRedirected = useRef(false);
 
     useEffect(() => {
+        console.log('[OAuthRedirect] Check:', {
+            loading,
+            pendingTherapistLoaded,
+            isLoggedIn,
+            pendingTherapistName: pendingTherapist?.name || null,
+            hasRedirected: hasRedirected.current,
+        });
         // Wait for BOTH auth session AND pendingTherapist to be loaded from AsyncStorage
         // before making any redirect decision. This prevents the race condition where
         // auth loads first but pendingTherapist hasn't been read from storage yet.
         if (!loading && pendingTherapistLoaded && isLoggedIn && pendingTherapist?.name && !hasRedirected.current) {
             hasRedirected.current = true;
+            console.log('[OAuthRedirect] Redirecting to chat with:', pendingTherapist.name);
             // Don't clear pendingTherapist here — chat.tsx needs the pendingMessage
             // Chat screen will clear it after restoring the draft message
             router.replace({

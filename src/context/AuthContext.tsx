@@ -58,9 +58,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const setPendingTherapist = async (therapist: PendingTherapist) => {
         if (therapist) {
             const withTimestamp = { ...therapist, timestamp: Date.now() };
+            console.log('[Auth] setPendingTherapist:', withTimestamp.name, 'timestamp:', withTimestamp.timestamp);
             setPendingTherapistState(withTimestamp);
             await AsyncStorage.setItem(PENDING_THERAPIST_KEY, JSON.stringify(withTimestamp));
+            console.log('[Auth] setPendingTherapist: AsyncStorage write complete');
         } else {
+            console.log('[Auth] setPendingTherapist: clearing');
             setPendingTherapistState(null);
             await AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
         }
@@ -73,15 +76,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         // On app load, check for pending therapist from before OAuth redirect
-        // Expire entries older than 5 minutes (stale from previous sessions)
+        // Expire entries older than 10 minutes (stale from previous sessions)
         AsyncStorage.getItem(PENDING_THERAPIST_KEY).then((value) => {
+            console.log('[Auth] pendingTherapist from storage:', value);
             if (value) {
                 const parsed = JSON.parse(value);
-                const FIVE_MINUTES = 5 * 60 * 1000;
-                if (parsed.timestamp && (Date.now() - parsed.timestamp) < FIVE_MINUTES) {
+                const TEN_MINUTES = 10 * 60 * 1000;
+                if (parsed.timestamp && (Date.now() - parsed.timestamp) < TEN_MINUTES) {
                     setPendingTherapistState(parsed);
+                    console.log('[Auth] pendingTherapist restored:', parsed.name);
                 } else {
                     // Stale data — remove it
+                    console.log('[Auth] pendingTherapist expired, removing');
                     AsyncStorage.removeItem(PENDING_THERAPIST_KEY);
                 }
             }
@@ -89,6 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
 
         supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('[Auth] getSession result:', session ? `logged in as ${session.user?.email}` : 'no session');
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
@@ -96,6 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (_event, session) => {
+                console.log('[Auth] onAuthStateChange:', _event, session ? `logged in as ${session.user?.email}` : 'no session');
                 setSession(session);
                 setUser(session?.user ?? null);
                 if (session) {
