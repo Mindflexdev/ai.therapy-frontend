@@ -17,7 +17,8 @@ const INITIAL_MESSAGES = [
 // n8n webhook configuration from env vars
 // Set in .env: N8N_WEBHOOK_URL
 const extraConfig = Constants.expoConfig?.extra || {};
-const N8N_WEBHOOK_URL = extraConfig.N8N_WEBHOOK_URL || 'https://webhook.ai.therapy.free/n8n/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
+// Production URL: no /n8n/ prefix needed - nginx handles that
+const N8N_WEBHOOK_URL = extraConfig.N8N_WEBHOOK_URL || 'https://webhook.ai.therapy.free/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
 // No auth needed on webhook subdomain
 const N8N_WEBHOOK_USER = '';
 const N8N_WEBHOOK_PASS = '';
