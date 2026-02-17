@@ -15,11 +15,12 @@ const INITIAL_MESSAGES = [
 ];
 
 // n8n webhook configuration from env vars
-// Set in .env: N8N_WEBHOOK_URL, N8N_WEBHOOK_USER, N8N_WEBHOOK_PASS
+// Set in .env: N8N_WEBHOOK_URL
 const extraConfig = Constants.expoConfig?.extra || {};
-const N8N_WEBHOOK_URL = extraConfig.N8N_WEBHOOK_URL || 'https://admin.ai.therapy.free/n8n/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
-const N8N_WEBHOOK_USER = extraConfig.N8N_WEBHOOK_USER || 'moritz';
-const N8N_WEBHOOK_PASS = extraConfig.N8N_WEBHOOK_PASS || '123';
+const N8N_WEBHOOK_URL = extraConfig.N8N_WEBHOOK_URL || 'https://webhook.ai.therapy.free/n8n/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
+// No auth needed on webhook subdomain
+const N8N_WEBHOOK_USER = '';
+const N8N_WEBHOOK_PASS = '';
 
 
 import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
