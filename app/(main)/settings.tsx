@@ -4,10 +4,12 @@ import { Theme } from '../../src/constants/Theme';
 import { ChevronLeft, User, CreditCard, Sliders, Link, ShieldCheck, Bell, Globe, Lock, MessageCircle, ChevronRight, LogOut, FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { useSubscription } from '../../src/context/SubscriptionContext';
 
 export default function SettingsScreen() {
     const router = useRouter();
     const { logout, user } = useAuth();
+    const { isPro } = useSubscription();
 
     const handleLogout = () => {
         logout();
@@ -42,13 +44,15 @@ export default function SettingsScreen() {
                     <Text style={styles.email}>{user?.email || ''}</Text>
                 </View>
 
-                <View style={styles.upgradeCard}>
-                    <Text style={styles.upgradeTitle}>Upgrade to ai.therapy Pro</Text>
-                    <Text style={styles.upgradeText}>Unlock all characters, unlimited calls, and long-term memory.</Text>
-                    <TouchableOpacity style={styles.upgradeBtn} onPress={() => router.push('/(main)/paywall')}>
-                        <Text style={styles.upgradeBtnText}>Upgrade</Text>
-                    </TouchableOpacity>
-                </View>
+                {!isPro && (
+                    <View style={styles.upgradeCard}>
+                        <Text style={styles.upgradeTitle}>Upgrade to ai.therapy Pro</Text>
+                        <Text style={styles.upgradeText}>Unlock all characters, unlimited calls, and long-term memory.</Text>
+                        <TouchableOpacity style={styles.upgradeBtn} onPress={() => router.push('/(main)/paywall')}>
+                            <Text style={styles.upgradeBtnText}>Upgrade</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.section}>
                     <SettingRow icon={User} label="Profile" />
