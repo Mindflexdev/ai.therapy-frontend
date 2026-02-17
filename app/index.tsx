@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Image, Text, Animated, Easing, Platform } from 'react-native';
+import { useState, useRef, useCallback } from 'react';
+import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Image, Text, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Theme } from '../src/constants/Theme';
 import { useAuth } from '../src/context/AuthContext';
@@ -10,6 +10,7 @@ import { FeaturesSection } from '../src/components/sections/FeaturesSection';
 import { PricingSection } from '../src/components/sections/PricingSection';
 import { FAQSection } from '../src/components/sections/FAQSection';
 import { Footer } from '../src/components/sections/Footer';
+import { SplashAnimation } from '../src/components/SplashAnimation';
 
 const THERAPISTS = [
   { id: '1', name: 'Marcus', image: require('../assets/characters/marcus.jpg') },
@@ -26,6 +27,24 @@ export default function Onboarding() {
   const { selectTherapist, isLoggedIn, loading, pendingTherapist, pendingTherapistLoaded } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Splash animation: show on every visit/refresh
+  // Only skip if returning from OAuth redirect or user prefers reduced motion
+  const [showSplash, setShowSplash] = useState(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      // Skip if returning from OAuth redirect
+      if (window.location.hash.includes('access_token')) return false;
+      // Skip if user prefers reduced motion
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
+    }
+    return true;
+  });
+  const [splashComplete, setSplashComplete] = useState(!showSplash);
+
+  const handleSplashComplete = useCallback(() => {
+    setSplashComplete(true);
+    setTimeout(() => setShowSplash(false), 100);
+  }, []);
+
   // Detect if we're returning from an OAuth redirect (Supabase puts tokens in the URL hash)
   // While Supabase is parsing these tokens, isLoggedIn is still false — so we need this
   // additional check to show the loading screen instead of flashing the landing page
@@ -36,6 +55,14 @@ export default function Onboarding() {
   // While we're still loading auth, pendingTherapist, or processing OAuth tokens, show loading
   // (prevents flash of landing page before we know if we need to redirect)
   if (!pendingTherapistLoaded || loading || hasOAuthTokensInUrl) {
+    // If splash hasn't completed yet, use it as the loading screen
+    if (showSplash && !splashComplete) {
+      return (
+        <View style={styles.loadingContainer}>
+          <SplashAnimation onComplete={handleSplashComplete} />
+        </View>
+      );
+    }
     return (
       <View style={styles.loadingContainer}>
         <Image
@@ -142,6 +169,11 @@ export default function Onboarding() {
         onClose={() => setDrawerVisible(false)}
         onNavigate={handleNavigateToSection}
       />
+
+      {/* Splash overlay — renders on top of landing page on first visit */}
+      {showSplash && !splashComplete && (
+        <SplashAnimation onComplete={handleSplashComplete} />
+      )}
     </SafeAreaView>
   );
 }
