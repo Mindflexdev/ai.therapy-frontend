@@ -1,33 +1,68 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { Theme } from '../../constants/Theme';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
+import { THERAPISTS } from '../../constants/Therapists';
+import React, { useRef } from 'react';
 
 export function Footer() {
   const router = useRouter();
 
+  const { selectTherapist } = useAuth();
+  const tapCount = useRef(0);
+  const lastTapTime = useRef(0);
+
+  const openLegal = () => {
+    Linking.openURL('https://ai.therapy.free/legal');
+  };
+
+  const handleSecretTap = () => {
+    const now = Date.now();
+    if (now - lastTapTime.current < 500) {
+      tapCount.current += 1;
+    } else {
+      tapCount.current = 1;
+    }
+    lastTapTime.current = now;
+
+    if (tapCount.current === 3) {
+      tapCount.current = 0;
+      if (THERAPISTS.length > 0) {
+        const t = THERAPISTS[0];
+        selectTherapist(t.id, true);
+        router.push({
+          pathname: '/(main)/chat',
+          params: { name: t.name, image: t.image }
+        });
+      }
+    }
+  };
+
   return (
     <View style={styles.footer}>
       <View style={styles.links}>
-        <TouchableOpacity onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'terms' } })}>
+        <TouchableOpacity onPress={openLegal}>
           <Text style={styles.link}>Terms</Text>
         </TouchableOpacity>
         <Text style={styles.separator}>•</Text>
-        <TouchableOpacity onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'privacy' } })}>
+        <TouchableOpacity onPress={openLegal}>
           <Text style={styles.link}>Privacy</Text>
         </TouchableOpacity>
         <Text style={styles.separator}>•</Text>
-        <TouchableOpacity onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'cookies' } })}>
+        <TouchableOpacity onPress={openLegal}>
           <Text style={styles.link}>Cookies</Text>
         </TouchableOpacity>
         <Text style={styles.separator}>•</Text>
-        <TouchableOpacity onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'imprint' } })}>
+        <TouchableOpacity onPress={openLegal}>
           <Text style={styles.link}>Imprint</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.copyright}>
-        © 2024 ai.therapy
-      </Text>
+      <TouchableOpacity onPress={handleSecretTap} activeOpacity={1}>
+        <Text style={styles.copyright}>
+          @ 2026 Mindflex
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }

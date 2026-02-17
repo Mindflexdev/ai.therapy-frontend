@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, Modal, Image, useWindowDimensions, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, Modal, Image, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
 import { X } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { Footer } from '../../src/components/sections/Footer';
+import { THERAPISTS } from '../../src/constants/Therapists';
 
 export default function LoginScreen() {
     const router = useRouter();
-    const { showLoginModal, setShowLoginModal, loginWithOtp, loginWithGoogle, loginWithApple, isLoggedIn, setPendingTherapist, pendingTherapist } = useAuth();
+    const { showLoginModal, setShowLoginModal, loginWithOtp, loginWithGoogle, loginWithApple, isLoggedIn, setPendingTherapist, pendingTherapist, selectTherapist } = useAuth();
+    const tapRef = useRef(0);
+    const countRef = useRef(0);
     const { name, image } = useLocalSearchParams();
     const { height } = useWindowDimensions();
     const isSmallScreen = height < 700;
@@ -18,12 +21,12 @@ export default function LoginScreen() {
     const [emailSent, setEmailSent] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
-    // After successful login (email magic link), navigate to chat
+    // After successful login (email magic link), navigate to paywall
     useEffect(() => {
         if (isLoggedIn && showLoginModal) {
             setShowLoginModal(false);
             router.push({
-                pathname: '/(main)/chat',
+                pathname: '/(main)/paywall',
                 params: { name, image }
             });
         }
@@ -89,95 +92,128 @@ export default function LoginScreen() {
                         </TouchableOpacity>
 
                         <View style={[styles.content, isSmallScreen && { paddingTop: '5%' }]}>
-                <View style={styles.logoSection}>
-                    <View style={styles.logoContainer}>
-                        <Image
-                            source={require('../../assets/logo_ai.png')}
-                            style={styles.logoImageSmall}
-                            resizeMode="contain"
-                        />
-                        <Text style={styles.logo}>
-                            <Text style={styles.logoWhite}>ai</Text>
-                            <Text style={styles.logoDot}>.</Text>
-                            <Text style={styles.logoWhite}>therapy</Text>
-                        </Text>
-                    </View>
-                    <Text style={styles.slogan}>(not real therapy)</Text>
-                </View>
+                            <View style={styles.logoSection}>
+                                <View style={styles.logoContainer}>
+                                    <Image
+                                        source={require('../../assets/logo_ai.png')}
+                                        style={styles.logoImageSmall}
+                                        resizeMode="contain"
+                                    />
+                                    <Text style={styles.logo}>
+                                        <Text style={styles.logoWhite}>ai</Text>
+                                        <Text style={styles.logoDot}>.</Text>
+                                        <Text style={styles.logoWhite}>therapy</Text>
+                                    </Text>
+                                </View>
+                                <Text style={styles.slogan}>(not real therapy)</Text>
+                            </View>
 
-                <View style={styles.form}>
-                    {/* Apple Button */}
-                    <TouchableOpacity style={styles.appleSocialBtn} onPress={handleAppleLogin}>
-                        <View style={styles.iconWrapper}>
-                            <Svg width="18" height="18" viewBox="0 0 814 1000" fill="black">
-                                <Path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57.8-155.5-127.4c-58.3-81.3-105.9-207.6-105.9-328.2 0-193.1 125.7-295.6 249.4-295.6 65.7 0 120.5 43.1 161.7 43.1 39.2 0 100.4-45.8 174.7-45.8 28.2 0 130 2.5 197.3 95.2zM554.1 159.4c31.1-36.9 53.1-88.1 53.1-139.4 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.9 32.4-57.1 83.6-57.1 135.6 0 7.8.6 15.6 1.3 18.2 2.5.6 6.4.6 10.2.6 45.8.1 101.7-30.4 141.5-70.7z" />
-                            </Svg>
-                        </View>
-                        <Text style={styles.appleBtnText}>Continue with Apple</Text>
-                    </TouchableOpacity>
+                            <View style={styles.form}>
+                                {/* Apple Button */}
+                                <TouchableOpacity style={styles.appleSocialBtn} onPress={handleAppleLogin}>
+                                    <View style={styles.iconWrapper}>
+                                        <Svg width="18" height="18" viewBox="0 0 814 1000" fill="black">
+                                            <Path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57.8-155.5-127.4c-58.3-81.3-105.9-207.6-105.9-328.2 0-193.1 125.7-295.6 249.4-295.6 65.7 0 120.5 43.1 161.7 43.1 39.2 0 100.4-45.8 174.7-45.8 28.2 0 130 2.5 197.3 95.2zM554.1 159.4c31.1-36.9 53.1-88.1 53.1-139.4 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.9 32.4-57.1 83.6-57.1 135.6 0 7.8.6 15.6 1.3 18.2 2.5.6 6.4.6 10.2.6 45.8.1 101.7-30.4 141.5-70.7z" />
+                                        </Svg>
+                                    </View>
+                                    <Text style={styles.appleBtnText}>Continue with Apple</Text>
+                                </TouchableOpacity>
 
-                    {/* Google Button */}
-                    <TouchableOpacity style={styles.googleSocialBtn} onPress={handleGoogleLogin}>
-                        <View style={styles.iconWrapper}>
-                            <Svg width="20" height="20" viewBox="0 0 24 24">
-                                <Path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                <Path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                <Path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                <Path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                            </Svg>
-                        </View>
-                        <Text style={styles.socialText}>Continue with Google</Text>
-                    </TouchableOpacity>
+                                {/* Google Button */}
+                                <TouchableOpacity style={styles.googleSocialBtn} onPress={handleGoogleLogin}>
+                                    <View style={styles.iconWrapper}>
+                                        <Svg width="20" height="20" viewBox="0 0 24 24">
+                                            <Path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                            <Path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                            <Path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                            <Path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                        </Svg>
+                                    </View>
+                                    <Text style={styles.socialText}>Continue with Google</Text>
+                                </TouchableOpacity>
 
-                    <View style={styles.divider}>
-                        <View style={styles.line} />
-                        <Text style={styles.dividerText}>OR</Text>
-                        <View style={styles.line} />
-                    </View>
+                                <View style={styles.divider}>
+                                    <View style={styles.line} />
+                                    <Text style={styles.dividerText}>OR</Text>
+                                    <View style={styles.line} />
+                                </View>
 
-                    {emailSent ? (
-                        <View style={styles.emailSentBox}>
-                            <Text style={styles.emailSentTitle}>Check your email</Text>
-                            <Text style={styles.emailSentText}>
-                                We sent a magic link to <Text style={{ color: Theme.colors.text.primary }}>{email}</Text>. Click the link in the email to sign in.
-                            </Text>
-                            <TouchableOpacity onPress={() => { setEmailSent(false); setEmail(''); }} style={styles.emailSentRetry}>
-                                <Text style={styles.emailSentRetryText}>Use a different email</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <>
-                            {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter your email"
-                                placeholderTextColor={Theme.colors.text.muted}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                value={email}
-                                onChangeText={(t) => { setEmail(t); setErrorMsg(''); }}
-                                editable={!isLoading}
-                            />
-
-                            <TouchableOpacity style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]} onPress={handleEmailContinue} disabled={isLoading}>
-                                {isLoading ? (
-                                    <ActivityIndicator color={Theme.colors.background} />
+                                {emailSent ? (
+                                    <View style={styles.emailSentBox}>
+                                        <Text style={styles.emailSentTitle}>Check your email</Text>
+                                        <Text style={styles.emailSentText}>
+                                            We sent a magic link to <Text style={{ color: Theme.colors.text.primary }}>{email}</Text>. Click the link in the email to sign in.
+                                        </Text>
+                                        <TouchableOpacity onPress={() => { setEmailSent(false); setEmail(''); }} style={styles.emailSentRetry}>
+                                            <Text style={styles.emailSentRetryText}>Use a different email</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 ) : (
-                                    <Text style={styles.primaryBtnText}>Continue with Email</Text>
+                                    <>
+                                        {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+                                        <TextInput
+                                            style={styles.input}
+                                            placeholder="Enter your email"
+                                            placeholderTextColor={Theme.colors.text.muted}
+                                            keyboardType="email-address"
+                                            autoCapitalize="none"
+                                            value={email}
+                                            onChangeText={(t) => { setEmail(t); setErrorMsg(''); }}
+                                            editable={!isLoading}
+                                        />
+
+                                        <TouchableOpacity style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]} onPress={handleEmailContinue} disabled={isLoading}>
+                                            {isLoading ? (
+                                                <ActivityIndicator color={Theme.colors.background} />
+                                            ) : (
+                                                <Text style={styles.primaryBtnText}>Continue with Email</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </>
                                 )}
+
+                                <Text style={styles.footerNote}>
+                                    By exchanging messages with ai.therapy, an AI chatbot, you agree to our{' '}
+                                    <Text style={styles.link} onPress={() => { setShowLoginModal(false); router.push({ pathname: '/(main)/legal', params: { section: 'terms' } }); }}>Terms of Use</Text> and acknowledge that you have read our{' '}
+                                    <Text style={styles.link} onPress={() => { setShowLoginModal(false); router.push({ pathname: '/(main)/legal', params: { section: 'privacy' } }); }}>Privacy Policy</Text>,{' '}
+                                    <Text style={styles.link} onPress={() => { setShowLoginModal(false); router.push({ pathname: '/(main)/legal', params: { section: 'cookies' } }); }}>Cookie Policy</Text>, and{' '}
+                                    <Text style={styles.link} onPress={() => { setShowLoginModal(false); router.push({ pathname: '/(main)/legal', params: { section: 'imprint' } }); }}>Imprint</Text>.
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    const now = Date.now();
+                                    const lastTap = tapRef.current;
+                                    tapRef.current = now;
+
+                                    if (now - lastTap < 500) {
+                                        countRef.current += 1;
+                                    } else {
+                                        countRef.current = 1;
+                                    }
+
+                                    if (countRef.current === 3) {
+                                        countRef.current = 0;
+                                        if (THERAPISTS.length > 0) {
+                                            const t = THERAPISTS[0];
+                                            selectTherapist(t.id, true);
+                                            setShowLoginModal(false);
+                                            router.replace({
+                                                pathname: '/(main)/chat',
+                                                params: { name: t.name, image: t.image }
+                                            });
+                                        }
+                                    }
+                                }}
+                                activeOpacity={1}
+                            >
+                                <Text style={styles.copyrightText}>
+                                    @ 2026 Mindflex
+                                </Text>
                             </TouchableOpacity>
-                        </>
-                    )}
-
-                    <Text style={styles.footerNote}>
-                        By continuing, you acknowledge our{' '}
-                        <Text style={styles.link}>Privacy Policy</Text>.
-                    </Text>
-                </View>
-
-                <Footer />
-            </View>
-        </SafeAreaView>
+                        </View>
+                    </SafeAreaView>
                 </TouchableOpacity>
             </TouchableOpacity>
         </Modal>
@@ -193,8 +229,10 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         width: '100%',
+        maxWidth: 1500,
         height: '100%',
         backgroundColor: Theme.colors.background,
+        alignSelf: 'center',
     },
     container: {
         flex: 1,
@@ -386,5 +424,12 @@ const styles = StyleSheet.create({
     link: {
         color: Theme.colors.text.secondary,
         textDecorationLine: 'underline',
+    },
+    copyrightText: {
+        fontSize: 11,
+        fontFamily: 'Inter-Regular',
+        color: Theme.colors.text.muted,
+        textAlign: 'center',
+        marginTop: Theme.spacing.l,
     },
 });

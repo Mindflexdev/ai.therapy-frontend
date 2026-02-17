@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch, Linking } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
 import { ChevronLeft, User, CreditCard, Sliders, Link, ShieldCheck, Bell, Globe, Lock, MessageCircle, ChevronRight, LogOut, FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -68,9 +68,9 @@ export default function SettingsScreen() {
                 </View>
 
                 <View style={styles.section}>
-                    <SettingRow icon={ShieldCheck} label="Safety & Legal" onPress={() => router.push('/(main)/safety')} />
-                    <SettingRow icon={Lock} label="Privacy Policy" onPress={() => router.push('/(main)/privacy')} />
-                    <SettingRow icon={FileText} label="Terms of Use" onPress={() => router.push('/(main)/terms')} />
+                    <SettingRow icon={ShieldCheck} label="Safety & Legal" onPress={() => Linking.openURL('https://ai.therapy.free/legal')} />
+                    <SettingRow icon={Lock} label="Privacy Policy" onPress={() => Linking.openURL('https://ai.therapy.free/legal')} />
+                    <SettingRow icon={FileText} label="Terms of Use" onPress={() => Linking.openURL('https://ai.therapy.free/legal')} />
                 </View>
 
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

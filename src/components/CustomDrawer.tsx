@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, Linking } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { Theme } from '../constants/Theme';
-import { LogIn, Crown, MessageSquare, ExternalLink } from 'lucide-react-native';
+import { LogIn, Crown, MessageSquare, ExternalLink, Lightbulb } from 'lucide-react-native';
 import { THERAPISTS } from '../constants/Therapists';
 import { useRouter } from 'expo-router';
 
@@ -10,12 +10,12 @@ import { useAuth } from '../context/AuthContext';
 import { Lock } from 'lucide-react-native';
 
 export const CustomDrawer = (props: DrawerContentComponentProps) => {
-    const { isLoggedIn, selectedTherapistId, setShowLoginModal, user } = useAuth();
+    const { isLoggedIn, isPro, selectedTherapistId, setShowLoginModal, user, pendingTherapist } = useAuth();
     const router = useRouter();
 
     const isUnlocked = (t: any) => {
-        // Unlocked if logged in OR if it's the selected therapist
-        return isLoggedIn || (t.id === selectedTherapistId);
+        // Unlocked if user is Pro OR if it's the strictly selected therapist
+        return isPro || (t.id === selectedTherapistId);
     };
 
     const handleTherapistPress = (t: any) => {
@@ -28,7 +28,7 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
 
     const handleLinkPress = (route: string) => {
         if (route === 'legal') {
-            router.push('/(main)/legal');
+            Linking.openURL('https://ai.therapy.free/legal');
         } else {
             props.navigation.navigate(route);
         }
@@ -37,7 +37,11 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <View style={styles.brandingContainer}>
+                <TouchableOpacity
+                    style={styles.brandingContainer}
+                    onPress={() => { props.navigation.closeDrawer(); router.replace('/'); }}
+                    activeOpacity={0.7}
+                >
                     <View style={styles.logoContainer}>
                         <Image
                             source={require('../../assets/logo_ai.png')}
@@ -51,7 +55,7 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
                         </Text>
                     </View>
                     <Text style={styles.slogan}>(not real therapy)</Text>
-                </View>
+                </TouchableOpacity>
             </View>
 
             <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContent}>
@@ -85,9 +89,28 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
                     })}
                 </View>
 
+                <Text style={styles.sectionTitle}>Support</Text>
+                <View style={styles.section}>
+                    <TouchableOpacity style={styles.feedbackItem} onPress={() => { props.navigation.closeDrawer(); router.push('/(main)/feedback'); }}>
+                        <View style={styles.feedbackIconWrapper}>
+                            <Lightbulb size={18} color={Theme.colors.text.secondary} />
+                        </View>
+                        <Text style={styles.feedbackText}>Provide Feedback</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.footerLinks}>
-                    <TouchableOpacity style={styles.footerLink} onPress={() => handleLinkPress('legal')}>
-                        <Text style={styles.footerLinkText}>Legal</Text>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'privacy' } })}>
+                        <Text style={styles.footerLinkText}>Privacy Policy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'terms' } })}>
+                        <Text style={styles.footerLinkText}>Terms of Use</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'cookies' } })}>
+                        <Text style={styles.footerLinkText}>Cookie Policy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.footerLink} onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'imprint' } })}>
+                        <Text style={styles.footerLinkText}>Imprint</Text>
                     </TouchableOpacity>
                 </View>
             </DrawerContentScrollView>
@@ -318,5 +341,27 @@ const styles = StyleSheet.create({
         color: Theme.colors.text.muted,
         fontSize: 13,
         fontFamily: 'Inter-Regular',
-    }
+    },
+    feedbackItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Theme.spacing.m,
+        borderRadius: Theme.borderRadius.m,
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        marginHorizontal: 0,
+    },
+    feedbackIconWrapper: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: Theme.spacing.m,
+    },
+    feedbackText: {
+        color: Theme.colors.text.primary,
+        fontSize: 15,
+        fontFamily: 'Inter-Regular',
+    },
 });

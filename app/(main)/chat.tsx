@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert, Animated, Easing } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Theme } from '../../src/constants/Theme';
 import { ChatBubble } from '../../src/components/ChatBubble';
-import { Menu, Phone, Video, Plus, Camera, Mic, ChevronLeft } from 'lucide-react-native';
+import { Menu, Phone, Video, Plus, Camera, Mic, ChevronLeft, Square, ArrowUp } from 'lucide-react-native';
 import { useNavigation, useLocalSearchParams } from 'expo-router';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../../src/context/AuthContext';
@@ -14,7 +14,7 @@ const INITIAL_MESSAGES = [
 ];
 
 
-import { THERAPIST_IMAGES } from '../../src/constants/Therapists';
+import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
 
 export default function ChatScreen() {
     const { name } = useLocalSearchParams();
@@ -23,9 +23,10 @@ export default function ChatScreen() {
 
     const [messages, setMessages] = useState<any[]>([]);
     const [isTyping, setIsTyping] = useState(true);
+    const [isRecording, setIsRecording] = useState(false);
     const [inputText, setInputText] = useState('');
     const navigation = useNavigation<DrawerNavigationProp<any>>();
-    const { showLoginModal, setShowLoginModal, isLoggedIn, setPendingTherapist, pendingTherapist, clearPendingTherapist } = useAuth();
+    const { showLoginModal, setShowLoginModal, isLoggedIn, setPendingTherapist, pendingTherapist, clearPendingTherapist, selectedTherapistId, selectTherapist } = useAuth();
 
     // Restore draft message from pendingTherapist (saved before OAuth redirect)
     // Only auto-send if the user is actually logged in
@@ -59,7 +60,7 @@ export default function ChatScreen() {
                 isUser: false,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);
-        }, 1500); // Slightly shorter delay for better UX
+        }, 2500); // Increased delay by 1s as requested
         return () => clearTimeout(timer);
     }, []);
 
@@ -102,6 +103,53 @@ export default function ChatScreen() {
             <Text style={{ color: Theme.colors.text.secondary, fontSize: 12 }}>typing...</Text>
         </View>
     );
+
+    const VoiceWaveform = () => {
+        const bars = useRef([...Array(25)].map(() => new Animated.Value(2))).current;
+
+        useEffect(() => {
+            const animations = bars.map((bar, i) => {
+                return Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(bar, {
+                            toValue: Math.random() * 20 + 5,
+                            duration: 200 + Math.random() * 300,
+                            useNativeDriver: false,
+                            easing: Easing.bezier(0.4, 0, 0.2, 1)
+                        }),
+                        Animated.timing(bar, {
+                            toValue: 2,
+                            duration: 200 + Math.random() * 300,
+                            useNativeDriver: false,
+                            easing: Easing.bezier(0.4, 0, 0.2, 1)
+                        })
+                    ])
+                );
+            });
+
+            if (isRecording) {
+                Animated.parallel(animations).start();
+            } else {
+                animations.forEach(a => a.stop());
+            }
+
+            return () => animations.forEach(a => a.stop());
+        }, [isRecording]);
+
+        return (
+            <View style={styles.waveformContainer}>
+                {bars.map((bar, i) => (
+                    <Animated.View
+                        key={i}
+                        style={[
+                            styles.waveformBar,
+                            { height: bar }
+                        ]}
+                    />
+                ))}
+            </View>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -150,31 +198,64 @@ export default function ChatScreen() {
 
                 {/* Input Bar */}
                 <View style={styles.inputBar}>
-                    <TouchableOpacity onPress={showComingSoon}>
-                        <Plus size={24} color={Theme.colors.text.primary} />
-                    </TouchableOpacity>
+                    {isRecording ? (
+                        <View style={styles.recordingRow}>
+                            <TouchableOpacity onPress={() => setIsRecording(false)} style={styles.stopButton}>
+                                <Square size={16} color={Theme.colors.text.primary} fill={Theme.colors.text.primary} />
+                            </TouchableOpacity>
 
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Message..."
-                            placeholderTextColor={Theme.colors.text.muted}
-                            value={inputText}
-                            onChangeText={setInputText}
-                            multiline
-                        />
-                    </View>
+                            <View style={styles.recordingWaveformWrapper}>
+                                <VoiceWaveform />
+                            </View>
 
-                    <TouchableOpacity onPress={showComingSoon}>
-                        <Camera size={24} color={Theme.colors.text.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={inputText.trim() ? handleSend : showComingSoon} style={styles.micButton}>
-                        {inputText.trim() ? (
-                            <Text style={styles.sendText}>Send</Text>
-                        ) : (
-                            <Mic size={24} color={Theme.colors.text.primary} />
-                        )}
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setIsRecording(false);
+                                    // Simulated transcription
+                                    setInputText("Transcribed voice message...");
+                                }}
+                                style={styles.recordingSendButton}
+                            >
+                                <ArrowUp size={20} color={Theme.colors.background} strokeWidth={3} />
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <>
+                            <TouchableOpacity onPress={showComingSoon} style={styles.inputExtrasButton}>
+                                <Plus size={24} color={Theme.colors.text.primary} />
+                            </TouchableOpacity>
+
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Message..."
+                                    placeholderTextColor={Theme.colors.text.muted}
+                                    value={inputText}
+                                    onChangeText={setInputText}
+                                    multiline
+                                />
+                            </View>
+
+                            <View style={styles.rightIconsContainer}>
+                                {!inputText.trim() && (
+                                    <TouchableOpacity onPress={showComingSoon} style={styles.inputExtrasButton}>
+                                        <Camera size={24} color={Theme.colors.text.primary} />
+                                    </TouchableOpacity>
+                                )}
+
+                                <TouchableOpacity
+                                    onPress={inputText.trim() ? handleSend : () => setIsRecording(true)}
+                                    style={[styles.micButton, inputText.trim() && styles.recordingSendButton]}
+                                >
+                                    {inputText.trim() ? (
+                                        <ArrowUp size={20} color={Theme.colors.background} strokeWidth={3} />
+                                    ) : (
+                                        <Mic size={24} color={Theme.colors.text.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
                 </View>
             </KeyboardAvoidingView>
 
@@ -238,25 +319,86 @@ const styles = StyleSheet.create({
     inputBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: Theme.spacing.m,
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        paddingVertical: Theme.spacing.s,
+        paddingHorizontal: Theme.spacing.m,
+        backgroundColor: Theme.colors.background,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.05)',
+    },
+    inputExtrasButton: {
+        padding: Theme.spacing.xs,
+    },
+    rightIconsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 0,
+    },
+    recordingRow: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: Theme.spacing.m,
+    },
+    stopButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    recordingWaveformWrapper: {
+        flex: 1,
+        height: 44,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderRadius: 22,
+        justifyContent: 'center',
+        paddingHorizontal: Theme.spacing.l,
+    },
+    recordingSendButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: Theme.colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    waveformContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        gap: 3,
+    },
+    waveformBar: {
+        width: 3,
+        backgroundColor: Theme.colors.primary,
+        borderRadius: 2,
     },
     inputContainer: {
         flex: 1,
-        marginHorizontal: Theme.spacing.m,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: Theme.borderRadius.xl,
+        marginHorizontal: Theme.spacing.s,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 22,
         paddingHorizontal: Theme.spacing.m,
-        paddingVertical: 8,
+        paddingVertical: 6,
         minHeight: 40,
+        maxHeight: 100,
+        justifyContent: 'center',
     },
     input: {
         color: Theme.colors.text.primary,
         fontSize: 16,
         fontFamily: 'Inter-Regular',
+        maxHeight: 80,
+        padding: 0,
+        margin: 0,
     },
     micButton: {
-        marginLeft: Theme.spacing.s,
+        padding: Theme.spacing.s,
+        minWidth: 40,
+        alignItems: 'center',
     },
     sendText: {
         color: Theme.colors.primary,

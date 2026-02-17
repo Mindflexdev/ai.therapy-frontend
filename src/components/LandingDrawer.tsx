@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
-import { X } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Linking } from 'react-native';
+import { X, Home, Info, Tag, CircleHelp, Gavel, Lock, FileText, Cookie, ShieldCheck } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { Theme } from '../constants/Theme';
 
 interface Props {
@@ -10,15 +11,24 @@ interface Props {
 }
 
 export function LandingDrawer({ visible, onClose, onNavigate }: Props) {
+  const router = useRouter();
   const sections = [
-    { id: 'hero', label: 'Start' },
-    { id: 'features', label: 'Features' },
-    { id: 'pricing', label: 'Pricing' },
-    { id: 'faq', label: 'FAQ' },
+    { id: 'hero', label: 'Start', icon: Home },
+    { id: 'features', label: 'Features', icon: Info },
+    { id: 'pricing', label: 'Pricing', icon: Tag },
+    { id: 'faq', label: 'FAQ', icon: CircleHelp },
+    { id: 'privacy', label: 'Privacy Policy', icon: Lock },
+    { id: 'terms', label: 'Terms of Use', icon: FileText },
+    { id: 'cookies', label: 'Cookie Policy', icon: Cookie },
+    { id: 'imprint', label: 'Imprint', icon: ShieldCheck },
   ];
 
   const handleNavigate = (sectionId: string) => {
-    onNavigate(sectionId);
+    if (['privacy', 'terms', 'cookies', 'imprint'].includes(sectionId)) {
+      router.push({ pathname: '/(main)/legal', params: { section: sectionId } });
+    } else {
+      onNavigate(sectionId);
+    }
     onClose();
   };
 
@@ -47,15 +57,19 @@ export function LandingDrawer({ visible, onClose, onNavigate }: Props) {
           </View>
 
           <View style={styles.menu}>
-            {sections.map((section) => (
-              <TouchableOpacity
-                key={section.id}
-                style={styles.menuItem}
-                onPress={() => handleNavigate(section.id)}
-              >
-                <Text style={styles.menuText}>{section.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {sections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <TouchableOpacity
+                  key={section.id}
+                  style={styles.menuItem}
+                  onPress={() => handleNavigate(section.id)}
+                >
+                  <Icon size={22} color={Theme.colors.primary} style={{ marginRight: Theme.spacing.m }} />
+                  <Text style={styles.menuText}>{section.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -71,9 +85,15 @@ const styles = StyleSheet.create({
   },
   drawer: {
     backgroundColor: Theme.colors.background,
-    borderTopLeftRadius: Theme.borderRadius.l,
-    borderTopRightRadius: Theme.borderRadius.l,
+    borderTopLeftRadius: Theme.borderRadius.xl,
+    borderTopRightRadius: Theme.borderRadius.xl,
     paddingBottom: Theme.spacing.xxl,
+    borderTopWidth: 2,
+    borderTopColor: Theme.colors.primary,
+    shadowColor: Theme.colors.primary,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
   },
   header: {
     flexDirection: 'row',
@@ -92,10 +112,17 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.m,
   },
   menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: Theme.spacing.m,
     paddingHorizontal: Theme.spacing.l,
     borderRadius: Theme.borderRadius.m,
     marginBottom: Theme.spacing.s,
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.2)',
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary,
   },
   menuText: {
     fontSize: 18,

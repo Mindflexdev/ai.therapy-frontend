@@ -55,12 +55,11 @@ function OAuthRedirectHandler() {
     useEffect(() => {
         // Wait for BOTH auth session AND pendingTherapist to be loaded
         // before making any redirect decision.
-        if (!loading && pendingTherapistLoaded && isLoggedIn && pendingTherapist?.name && !hasRedirected.current) {
+        if (!loading && pendingTherapistLoaded && isLoggedIn && !hasRedirected.current) {
             hasRedirected.current = true;
-            // Don't clear pendingTherapist here — chat.tsx needs the pendingMessage
             router.replace({
-                pathname: '/(main)/chat',
-                params: { name: pendingTherapist.name }
+                pathname: '/(main)/paywall',
+                params: pendingTherapist?.name ? { name: pendingTherapist.name } : {}
             });
         }
     }, [isLoggedIn, loading, pendingTherapist, pendingTherapistLoaded]);

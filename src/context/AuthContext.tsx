@@ -10,6 +10,7 @@ type PendingTherapist = { name: string; pendingMessage?: string; timestamp?: num
 
 type AuthContextType = {
     isLoggedIn: boolean;
+    isPro: boolean;
     user: User | null;
     session: Session | null;
     selectedTherapistId: string | null;
@@ -21,7 +22,7 @@ type AuthContextType = {
     loginWithGoogle: (therapistName?: string) => Promise<void>;
     loginWithApple: (therapistName?: string) => Promise<void>;
     logout: () => Promise<void>;
-    selectTherapist: (id: string) => void;
+    selectTherapist: (id: string, force?: boolean) => void;
     setShowLoginModal: (show: boolean) => void;
     setPendingTherapist: (therapist: PendingTherapist) => Promise<void>;
     clearPendingTherapist: () => void;
@@ -29,6 +30,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({
     isLoggedIn: false,
+    isPro: false,
     user: null,
     session: null,
     selectedTherapistId: null,
@@ -37,18 +39,19 @@ const AuthContext = createContext<AuthContextType>({
     pendingTherapist: null,
     pendingTherapistLoaded: false,
     loginWithOtp: async () => ({ error: null }),
-    loginWithGoogle: async () => {},
-    loginWithApple: async () => {},
-    logout: async () => {},
-    selectTherapist: () => {},
-    setShowLoginModal: () => {},
-    setPendingTherapist: async () => {},
-    clearPendingTherapist: () => {},
+    loginWithGoogle: async () => { },
+    loginWithApple: async () => { },
+    logout: async () => { },
+    selectTherapist: () => { },
+    setShowLoginModal: () => { },
+    setPendingTherapist: async () => { },
+    clearPendingTherapist: () => { },
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<User | null>(null);
+    const [isPro, setIsPro] = useState(false);
     const [loading, setLoading] = useState(true);
     const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -156,9 +159,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
         }
 
+        // Load selected therapist ID
+        if (Platform.OS === 'web') {
+            const savedId = window.localStorage.getItem('selectedTherapistId');
+            if (savedId) setSelectedTherapistId(savedId);
+        } else {
+            AsyncStorage.getItem('selectedTherapistId').then(id => {
+                if (id) setSelectedTherapistId(id);
+            });
+        }
+
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
+            setIsPro(false); // Default to false to ensure paywall shows
             setLoading(false);
         });
 
@@ -167,7 +181,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setSession(session);
                 setUser(session?.user ?? null);
                 if (session) {
+                    setIsPro(false);
                     setShowLoginModal(false);
+                } else {
+                    setIsPro(false);
                 }
             }
         );
@@ -264,11 +281,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSelectedTherapistId(null);
     };
 
-    const selectTherapist = (id: string) => setSelectedTherapistId(id);
+    const selectTherapist = (id: string | null, force: boolean = false) => {
+        // Allow setting if forced, if currently null, or if clearing (null)
+        if (force || id === null || selectedTherapistId === null) {
+            setSelectedTherapistId(id);
+            if (id) {
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.localStorage.setItem('selectedTherapistId', id);
+                } else {
+                    AsyncStorage.setItem('selectedTherapistId', id);
+                }
+            } else {
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.localStorage.removeItem('selectedTherapistId');
+                } else {
+                    AsyncStorage.removeItem('selectedTherapistId');
+                }
+            }
+        }
+    };
 
     return (
         <AuthContext.Provider value={{
             isLoggedIn: !!session,
+            isPro,
             user,
             session,
             selectedTherapistId,

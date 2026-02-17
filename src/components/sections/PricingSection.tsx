@@ -22,7 +22,6 @@ export function PricingSection({ onFreeTrial, onStartPro }: Props) {
             <FeatureRow text="unlock all characters" included={false} />
             <FeatureRow text="long-term memory" included={false} />
             <FeatureRow text="voice & phone calls" included={false} />
-            <FeatureRow text="advanced AI guidance" included={false} />
           </View>
 
           <TouchableOpacity style={styles.freeButton} onPress={onFreeTrial}>
@@ -40,7 +39,6 @@ export function PricingSection({ onFreeTrial, onStartPro }: Props) {
             <FeatureRow text="unlock all characters" included={true} />
             <FeatureRow text="long-term memory" included={true} />
             <FeatureRow text="voice & phone calls" included={true} />
-            <FeatureRow text="advanced AI guidance" included={true} />
           </View>
 
           <TouchableOpacity style={styles.proButton} onPress={onStartPro}>

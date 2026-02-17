@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView, ScrollView, View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Lock, FileText, Cookie, ShieldCheck } from 'lucide-react-native';
+import { ChevronLeft, Lock, FileText, Cookie, ShieldCheck, Menu, AlignLeft, AlignRight } from 'lucide-react-native';
 
 type LegalSection = 'privacy' | 'terms' | 'cookies' | 'imprint';
 
@@ -38,38 +38,50 @@ export default function LegalScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/')}>
-          <ChevronLeft size={28} color={Theme.colors.primary} />
+        <TouchableOpacity onPress={() => router.back()}>
+          <ChevronLeft size={28} color={Theme.colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Legal</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.brandingContainer}
+          onPress={() => router.replace('/')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.logoContainer}>
+            <Image source={require('../../assets/logo_ai.png')} style={styles.logoImage} />
+            <Text style={styles.logo}>
+              <Text style={styles.logoWhite}>ai</Text>
+              <Text style={styles.logoDot}>.</Text>
+              <Text style={styles.logoWhite}>therapy</Text>
+            </Text>
+          </View>
+          <Text style={styles.slogan}>(not real therapy)</Text>
+        </TouchableOpacity>
+        <View style={{ width: 28 }} />
+      </View>
+
+      <View style={styles.tabBar}>
+        {sections.map((section) => {
+          const Icon = section.icon;
+          const isSelected = selectedSection === section.id;
+          return (
+            <TouchableOpacity
+              key={section.id}
+              style={[styles.tabItem, isSelected && styles.tabItemSelected]}
+              onPress={() => setSelectedSection(section.id)}
+            >
+              <Icon
+                size={18}
+                color={isSelected ? Theme.colors.primary : Theme.colors.text.secondary}
+              />
+              <Text style={[styles.tabText, isSelected && styles.tabTextSelected]}>
+                {section.title}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <View style={styles.mainContainer}>
-        {/* Sidebar */}
-        <View style={styles.sidebar}>
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isSelected = selectedSection === section.id;
-            return (
-              <TouchableOpacity
-                key={section.id}
-                style={[styles.sidebarItem, isSelected && styles.sidebarItemSelected]}
-                onPress={() => setSelectedSection(section.id)}
-              >
-                <Icon
-                  size={18}
-                  color={isSelected ? Theme.colors.primary : Theme.colors.text.secondary}
-                />
-                <Text style={[styles.sidebarText, isSelected && styles.sidebarTextSelected]}>
-                  {section.title}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Content */}
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           {renderContent()}
         </ScrollView>
@@ -82,7 +94,8 @@ export default function LegalScreen() {
 function PrivacyContent() {
   return (
     <>
-      <Text style={styles.updated}>Last updated: [Insert Date]</Text>
+      <Text style={styles.heading}>Privacy Policy</Text>
+      <Text style={styles.updated}>Last updated: 17.02.2026</Text>
 
       <Text style={styles.heading}>1. Controller</Text>
       <Text style={styles.body}>
@@ -169,7 +182,8 @@ function PrivacyContent() {
 function TermsContent() {
   return (
     <>
-      <Text style={styles.updated}>Last updated: [Insert Date]</Text>
+      <Text style={styles.heading}>Terms of Use</Text>
+      <Text style={styles.updated}>Last updated: 17.02.2026</Text>
 
       <Text style={styles.heading}>1. Provider</Text>
       <Text style={styles.body}>
@@ -234,7 +248,8 @@ function TermsContent() {
 function CookiesContent() {
   return (
     <>
-      <Text style={styles.updated}>Last updated: [Insert Date]</Text>
+      <Text style={styles.heading}>Cookie Policy</Text>
+      <Text style={styles.updated}>Last updated: 17.02.2026</Text>
 
       <Text style={styles.heading}>1. What are cookies?</Text>
       <Text style={styles.body}>
@@ -303,6 +318,7 @@ function ImprintContent() {
   return (
     <>
       <Text style={styles.heading}>Imprint</Text>
+      <Text style={styles.updated}>Last updated: 17.02.2026</Text>
       <Text style={styles.subheading}>Information pursuant to Section 5 of the German Digital Services Act (DDG)</Text>
 
       <Text style={styles.sectionTitle}>Service Provider</Text>
@@ -370,41 +386,69 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 20,
   },
+  brandingContainer: {
+    alignItems: 'center',
+    marginTop: -10,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  slogan: {
+    fontSize: 10,
+    color: Theme.colors.text.secondary,
+    fontFamily: 'Outfit-Regular',
+    marginTop: -20,
+    marginLeft: 60,
+  },
+  logoImage: {
+    width: 60,
+    height: 60,
+    marginTop: 10,
+  },
+  logo: {
+    fontSize: 28,
+    fontFamily: 'Outfit-Regular',
+  },
+  logoWhite: {
+    color: Theme.colors.text.primary,
+  },
+  logoDot: {
+    color: Theme.colors.primary,
+  },
   mainContainer: {
     flex: 1,
+    flexDirection: 'column',
+  },
+  tabBar: {
     flexDirection: 'row',
-    overflow: 'hidden',
-    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(235, 206, 128, 0.2)',
+    paddingVertical: Theme.spacing.s,
+    justifyContent: 'center',
+    gap: Theme.spacing.s,
+    flexWrap: 'wrap',
   },
-  sidebar: {
-    width: 240,
-    minWidth: 240,
-    maxWidth: 240,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRightWidth: 2,
-    borderRightColor: 'rgba(235, 206, 128, 0.3)',
-    paddingVertical: Theme.spacing.l,
-  },
-  sidebarItem: {
+  tabItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Theme.spacing.m,
-    paddingHorizontal: Theme.spacing.l,
+    paddingHorizontal: Theme.spacing.m,
     gap: Theme.spacing.s,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
   },
-  sidebarItemSelected: {
-    backgroundColor: 'rgba(235, 206, 128, 0.2)',
-    borderLeftWidth: 4,
-    borderLeftColor: Theme.colors.primary,
-    borderRightWidth: 2,
-    borderRightColor: Theme.colors.primary,
+  tabItemSelected: {
+    borderBottomColor: Theme.colors.primary,
   },
-  sidebarText: {
+  tabText: {
     color: Theme.colors.text.secondary,
-    fontFamily: 'Inter-Regular',
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
   },
-  sidebarTextSelected: {
+  tabTextSelected: {
     color: Theme.colors.primary,
     fontFamily: 'Inter-Bold',
   },
@@ -414,6 +458,9 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: Theme.spacing.xl,
+    maxWidth: 1500,
+    width: '100%',
+    alignSelf: 'center',
   },
   updated: {
     color: Theme.colors.text.muted,

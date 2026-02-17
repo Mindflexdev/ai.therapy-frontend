@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch, Image } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch, Image, Linking } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
 import { X, Check } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -50,7 +50,7 @@ export default function PaywallScreen() {
                     <Text style={styles.slogan}>(not real therapy)</Text>
                 </View>
 
-                <Text style={styles.title}>Unlock Full Access</Text>
+                <Text style={styles.title}>Unlock Pro Access</Text>
 
                 <View style={styles.tableHeader}>
                     <Text style={styles.headerSpacer}></Text>
@@ -63,16 +63,23 @@ export default function PaywallScreen() {
                     <FeatureRow label="Unlock All Characters" free={false} pro={true} />
                     <FeatureRow label="Long-term Memory" free={false} pro={true} />
                     <FeatureRow label="Voice & Phone Calls" free={false} pro={true} />
-                    <FeatureRow label="Advanced AI Guidance" free={false} pro={true} />
                 </View>
 
                 <View style={styles.trialSection}>
                     <Text style={styles.trialText}>Not sure yet? Enable free trial</Text>
-                    <Switch
-                        value={isTrialEnabled}
-                        onValueChange={setIsTrialEnabled}
-                        trackColor={{ false: '#333', true: Theme.colors.primary }}
-                    />
+                    <TouchableOpacity
+                        onPress={() => setIsTrialEnabled(!isTrialEnabled)}
+                        activeOpacity={0.8}
+                        style={[
+                            styles.customSwitch,
+                            isTrialEnabled ? styles.customSwitchActive : styles.customSwitchInactive
+                        ]}
+                    >
+                        <View style={[
+                            styles.customSwitchThumb,
+                            isTrialEnabled ? styles.customSwitchThumbActive : styles.customSwitchThumbInactive
+                        ]} />
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.ctaSection}>
@@ -115,11 +122,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: Theme.spacing.xl,
         paddingBottom: Theme.spacing.xxl,
         alignItems: 'center',
+        width: '100%',
+        maxWidth: 1500,
+        alignSelf: 'center',
     },
     logoSection: {
         alignItems: 'center',
-        marginBottom: Theme.spacing.l,
-        marginTop: Theme.spacing.m,
+        marginBottom: Theme.spacing.xl,
+        marginTop: -Theme.spacing.m,
     },
     logoContainer: {
         flexDirection: 'row',
@@ -256,5 +266,29 @@ const styles = StyleSheet.create({
         color: Theme.colors.text.muted,
         fontSize: 12,
         textDecorationLine: 'underline',
+    },
+    customSwitch: {
+        width: 50,
+        height: 28,
+        borderRadius: 14,
+        padding: 2,
+    },
+    customSwitchActive: {
+        backgroundColor: Theme.colors.primary,
+    },
+    customSwitchInactive: {
+        backgroundColor: '#333333',
+    },
+    customSwitchThumb: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+    },
+    customSwitchThumbActive: {
+        alignSelf: 'flex-end',
+    },
+    customSwitchThumbInactive: {
+        alignSelf: 'flex-start',
     },
 });

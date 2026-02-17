@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ImageBackground, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ImageBackground, Platform, Animated } from 'react-native';
 import { Theme } from '../constants/Theme';
 import { BlurView } from 'expo-blur';
 
@@ -18,35 +18,60 @@ interface Props {
 export const TherapistCard = ({ therapist, isSelected, onSelect }: Props) => {
     const [isHovered, setIsHovered] = useState(false);
     const isWeb = Platform.OS === 'web';
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        if (therapist.name === 'Sarah') {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.05,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        }
+    }, [therapist.name]);
 
     return (
-        <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={onSelect}
-            // @ts-ignore - web-only props
-            onMouseEnter={isWeb ? () => setIsHovered(true) : undefined}
-            onMouseLeave={isWeb ? () => setIsHovered(false) : undefined}
-            style={[
-                styles.container,
-                isSelected && styles.selectedContainer
-            ]}
-        >
-            <View style={styles.imageWrapper}>
-                <ImageBackground
-                    source={require('../../assets/background.png')}
-                    style={styles.cardBackground}
-                    resizeMode="cover"
-                >
-                    <Image source={therapist.image} style={styles.image} defaultSource={require('../../assets/adaptive-icon.png')} />
-                    {(isSelected || isHovered) && (
-                        <View style={styles.glowEffect} />
-                    )}
-                    <View style={styles.nameOverlay}>
-                        <Text style={styles.name}>{therapist.name}</Text>
-                    </View>
-                </ImageBackground>
-            </View>
-        </TouchableOpacity>
+        <Animated.View style={[
+            styles.container,
+            therapist.name === 'Sarah' && {
+                transform: [{ scale: pulseAnim }],
+                zIndex: 10,
+            }
+        ]}>
+            <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={onSelect}
+                // @ts-ignore - web-only props
+                onMouseEnter={isWeb ? () => setIsHovered(true) : undefined}
+                onMouseLeave={isWeb ? () => setIsHovered(false) : undefined}
+                style={styles.touchable}
+            >
+                <View style={[styles.imageWrapper, isSelected && styles.selectedContainer]}>
+                    <ImageBackground
+                        source={require('../../assets/background.png')}
+                        style={styles.cardBackground}
+                        resizeMode="cover"
+                    >
+                        <Image source={therapist.image} style={styles.image} defaultSource={require('../../assets/adaptive-icon.png')} />
+                        {(isSelected || isHovered) && (
+                            <View style={styles.glowEffect} />
+                        )}
+                        <View style={styles.nameOverlay}>
+                            <Text style={styles.name}>{therapist.name}</Text>
+                        </View>
+                    </ImageBackground>
+                </View>
+            </TouchableOpacity>
+        </Animated.View>
     );
 };
 
@@ -56,8 +81,13 @@ const styles = StyleSheet.create({
         aspectRatio: 0.75,
         alignItems: 'center',
     },
+    touchable: {
+        width: '100%',
+        height: '100%',
+    },
     selectedContainer: {
-        // Selection feedback handled by glowEffect
+        borderColor: Theme.colors.primary,
+        borderWidth: 2,
     },
     imageWrapper: {
         width: '100%',

@@ -1,21 +1,40 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, Animated } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
 import { ChevronDown, Users, MicOff, Volume2, VideoOff, PhoneOff, MoreHorizontal } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
+import LoginScreen from './login';
 
 import { THERAPIST_IMAGES } from '../../src/constants/Therapists';
 
 export default function CallScreen() {
     const router = useRouter();
     const { name } = useLocalSearchParams();
+    const [isSpeakerActive, setIsSpeakerActive] = useState(false);
 
     // Fallback to Marcus if no name is provided (shouldn't happen in flow)
     const therapistName = (name as string) || 'Marcus';
     const therapistImage = THERAPIST_IMAGES[therapistName];
 
+    const { isLoggedIn, isPro, showLoginModal, setShowLoginModal } = useAuth();
     const scale = useRef(new Animated.Value(1)).current;
     const opacity = useRef(new Animated.Value(0.5)).current;
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!isLoggedIn) {
+                setShowLoginModal(true);
+            } else if (!isPro) {
+                router.replace({
+                    pathname: '/(main)/paywall',
+                    params: { name: therapistName }
+                });
+            }
+        }, 2500);
+
+        return () => clearTimeout(timer);
+    }, [isLoggedIn, isPro]);
 
     useEffect(() => {
         Animated.loop(
@@ -67,8 +86,11 @@ export default function CallScreen() {
                     <TouchableOpacity style={styles.controlBtn}>
                         <VideoOff size={24} color={Theme.colors.text.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.controlBtn}>
-                        <Volume2 size={24} color={Theme.colors.text.primary} />
+                    <TouchableOpacity
+                        style={[styles.controlBtn, isSpeakerActive && styles.activeControlBtn]}
+                        onPress={() => setIsSpeakerActive(!isSpeakerActive)}
+                    >
+                        <Volume2 size={24} color={isSpeakerActive ? Theme.colors.background : Theme.colors.text.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.controlBtn}>
                         <MicOff size={24} color={Theme.colors.text.primary} />
@@ -81,6 +103,9 @@ export default function CallScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
+
+            {/* Login Modal */}
+            {showLoginModal && <LoginScreen />}
         </SafeAreaView>
     );
 }
@@ -168,5 +193,8 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
+    },
+    activeControlBtn: {
+        backgroundColor: '#FFF',
     },
 });

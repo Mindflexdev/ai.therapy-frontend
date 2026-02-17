@@ -20,6 +20,7 @@ export default function MainLayout() {
             <Drawer.Screen name="legal" options={{ drawerItemStyle: { display: 'none' } }} />
             <Drawer.Screen name="paywall" options={{ drawerItemStyle: { display: 'none' } }} />
             <Drawer.Screen name="settings" options={{ drawerItemStyle: { display: 'none' } }} />
+            <Drawer.Screen name="feedback" options={{ drawerItemStyle: { display: 'none' } }} />
             <Drawer.Screen name="safety" options={{ drawerItemStyle: { display: 'none' } }} />
         </Drawer>
     );

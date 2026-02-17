@@ -75,7 +75,7 @@ export default function Onboarding() {
 
   const handleSelectTherapist = (therapist: any) => {
     setSelectedId(therapist.id);
-    selectTherapist(therapist.id);
+    selectTherapist(therapist.id, true);
 
     setTimeout(() => {
       router.push({
