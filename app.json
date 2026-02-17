@@ -39,14 +39,6 @@
             "deploymentTarget": "15.1"
           }
         }
-      ],
-      [
-        "react-native-purchases",
-        {
-          "ios": {
-            "usesStoreKit2": true
-          }
-        }
       ]
     ],
     "experiments": {
