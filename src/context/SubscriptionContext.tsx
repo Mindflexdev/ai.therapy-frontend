@@ -1,0 +1,138 @@
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Platform, Alert } from 'react-native';
+import Purchases, {
+    LOG_LEVEL,
+    PurchasesPackage,
+    CustomerInfo,
+    PurchasesOfferings,
+} from 'react-native-purchases';
+
+// RevenueCat Public API Keys
+const API_KEYS = {
+    ios: 'appl_IHJHPoCDqddZGdKGNZiNaxQAnKS',
+    android: 'goog_REPLACE_WITH_YOUR_REVENUECAT_ANDROID_API_KEY',   // TODO: Add Android app in RevenueCat
+};
+
+type SubscriptionContextType = {
+    isPro: boolean;
+    offerings: PurchasesOfferings | null;
+    customerInfo: CustomerInfo | null;
+    isLoading: boolean;
+    purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
+    restorePurchases: () => Promise<void>;
+};
+
+const SubscriptionContext = createContext<SubscriptionContextType>({
+    isPro: false,
+    offerings: null,
+    customerInfo: null,
+    isLoading: true,
+    purchasePackage: async () => false,
+    restorePurchases: async () => {},
+});
+
+const checkEntitlement = (info: CustomerInfo): boolean => {
+    return info.entitlements.active['pro'] !== undefined;
+};
+
+export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
+    const [isPro, setIsPro] = useState(false);
+    const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
+    const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // RevenueCat does not support web
+        if (Platform.OS === 'web') {
+            setIsLoading(false);
+            return;
+        }
+
+        const init = async () => {
+            try {
+                if (__DEV__) {
+                    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+                }
+
+                Purchases.configure({
+                    apiKey: Platform.OS === 'ios' ? API_KEYS.ios : API_KEYS.android,
+                });
+
+                // Fetch initial state
+                const [info, offers] = await Promise.all([
+                    Purchases.getCustomerInfo(),
+                    Purchases.getOfferings(),
+                ]);
+
+                setCustomerInfo(info);
+                setOfferings(offers);
+                setIsPro(checkEntitlement(info));
+            } catch (e) {
+                console.warn('RevenueCat init error:', e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        init();
+
+        // Listen for subscription changes (renewal, expiration, restore from another device)
+        Purchases.addCustomerInfoUpdateListener((info) => {
+            setCustomerInfo(info);
+            setIsPro(checkEntitlement(info));
+        });
+
+        // Note: addCustomerInfoUpdateListener does not return an unsubscribe function
+        // The listener persists for the app lifetime, which is fine since this provider
+        // is mounted at the root level and never unmounts.
+    }, []);
+
+    const purchasePackage = async (pkg: PurchasesPackage): Promise<boolean> => {
+        try {
+            const { customerInfo: updatedInfo } = await Purchases.purchasePackage(pkg);
+            setCustomerInfo(updatedInfo);
+            const isNowPro = checkEntitlement(updatedInfo);
+            setIsPro(isNowPro);
+            return isNowPro;
+        } catch (e: any) {
+            if (!e.userCancelled) {
+                Alert.alert('Purchase Error', e.message);
+            }
+            return false;
+        }
+    };
+
+    const restorePurchases = async () => {
+        try {
+            const info = await Purchases.restorePurchases();
+            setCustomerInfo(info);
+            const restored = checkEntitlement(info);
+            setIsPro(restored);
+
+            if (restored) {
+                Alert.alert('Restored!', 'Your Pro subscription has been restored.');
+            } else {
+                Alert.alert('No Subscription Found', 'No active subscription was found for this account.');
+            }
+        } catch (e: any) {
+            Alert.alert('Restore Error', e.message);
+        }
+    };
+
+    return (
+        <SubscriptionContext.Provider
+            value={{
+                isPro,
+                offerings,
+                customerInfo,
+                isLoading,
+                purchasePackage,
+                restorePurchases,
+            }}
+        >
+            {children}
+        </SubscriptionContext.Provider>
+    );
+};
+
+export const useSubscription = () => useContext(SubscriptionContext);

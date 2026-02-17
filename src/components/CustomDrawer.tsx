@@ -7,10 +7,12 @@ import { THERAPISTS } from '../constants/Therapists';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { Lock } from 'lucide-react-native';
 
 export const CustomDrawer = (props: DrawerContentComponentProps) => {
-    const { isLoggedIn, isPro, selectedTherapistId, setShowLoginModal, user, pendingTherapist } = useAuth();
+    const { isLoggedIn, selectedTherapistId, setShowLoginModal, user, pendingTherapist } = useAuth();
+    const { isPro } = useSubscription();
     const router = useRouter();
 
     const isUnlocked = (t: any) => {

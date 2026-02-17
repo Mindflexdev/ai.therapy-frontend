@@ -43,6 +43,7 @@ export default function RootLayout() {
 }
 
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { SubscriptionProvider } from '../src/context/SubscriptionContext';
 import { useRouter } from 'expo-router';
 
 // Handles redirect after OAuth login (Google OAuth does a full-page redirect,
@@ -70,19 +71,21 @@ function OAuthRedirectHandler() {
 function RootLayoutNav() {
     return (
         <AuthProvider>
-            <ThemeProvider value={DarkTheme}>
-                <OAuthRedirectHandler />
-                <Stack
-                    screenOptions={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: Theme.colors.background },
-                    }}
-                >
-                    <Stack.Screen name="index" options={{ headerShown: false }} />
-                    <Stack.Screen name="(main)" options={{ presentation: 'transparentModal', headerShown: false }} />
-                </Stack>
-                <StatusBar style="light" />
-            </ThemeProvider>
+            <SubscriptionProvider>
+                <ThemeProvider value={DarkTheme}>
+                    <OAuthRedirectHandler />
+                    <Stack
+                        screenOptions={{
+                            headerShown: false,
+                            contentStyle: { backgroundColor: Theme.colors.background },
+                        }}
+                    >
+                        <Stack.Screen name="index" options={{ headerShown: false }} />
+                        <Stack.Screen name="(main)" options={{ presentation: 'transparentModal', headerShown: false }} />
+                    </Stack>
+                    <StatusBar style="light" />
+                </ThemeProvider>
+            </SubscriptionProvider>
         </AuthProvider>
     );
 }

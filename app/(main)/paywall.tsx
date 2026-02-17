@@ -1,18 +1,43 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
 import { X, Check } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSubscription } from '../../src/context/SubscriptionContext';
 
 export default function PaywallScreen() {
     const router = useRouter();
     const { name, image } = useLocalSearchParams();
     const [isTrialEnabled, setIsTrialEnabled] = useState(false);
-    const handleContinue = () => {
-        router.push({
-            pathname: '/(main)/chat',
-            params: { name, image }
-        });
+    const { offerings, purchasePackage, restorePurchases, isPro, isLoading } = useSubscription();
+
+    // Get the current offering's weekly package
+    const currentOffering = offerings?.current;
+    const weeklyPackage = currentOffering?.weekly;
+
+    // Dynamic pricing from RevenueCat
+    const priceString = weeklyPackage?.product.priceString ?? '---';
+    const introPrice = weeklyPackage?.product.introPrice;
+    const hasTrialOffer = !!introPrice && introPrice.price === 0;
+
+    const handleContinue = async () => {
+        if (!weeklyPackage) return;
+
+        const success = await purchasePackage(weeklyPackage);
+        if (success) {
+            router.push({
+                pathname: '/(main)/chat',
+                params: { name, image },
+            });
+        }
+    };
+
+    const handleRestore = async () => {
+        await restorePurchases();
+    };
+
+    const handleClose = () => {
+        router.back();
     };
 
     const FeatureRow = ({ label, free, pro }: any) => (
@@ -29,7 +54,7 @@ export default function PaywallScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <TouchableOpacity onPress={handleContinue} style={styles.closeButton}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <X size={24} color={Theme.colors.text.muted} />
             </TouchableOpacity>
 
@@ -65,38 +90,54 @@ export default function PaywallScreen() {
                     <FeatureRow label="Voice & Phone Calls" free={false} pro={true} />
                 </View>
 
-                <View style={styles.trialSection}>
-                    <Text style={styles.trialText}>Not sure yet? Enable free trial</Text>
-                    <TouchableOpacity
-                        onPress={() => setIsTrialEnabled(!isTrialEnabled)}
-                        activeOpacity={0.8}
-                        style={[
-                            styles.customSwitch,
-                            isTrialEnabled ? styles.customSwitchActive : styles.customSwitchInactive
-                        ]}
-                    >
-                        <View style={[
-                            styles.customSwitchThumb,
-                            isTrialEnabled ? styles.customSwitchThumbActive : styles.customSwitchThumbInactive
-                        ]} />
-                    </TouchableOpacity>
-                </View>
+                {hasTrialOffer && (
+                    <View style={styles.trialSection}>
+                        <Text style={styles.trialText}>Not sure yet? Enable free trial</Text>
+                        <TouchableOpacity
+                            onPress={() => setIsTrialEnabled(!isTrialEnabled)}
+                            activeOpacity={0.8}
+                            style={[
+                                styles.customSwitch,
+                                isTrialEnabled ? styles.customSwitchActive : styles.customSwitchInactive
+                            ]}
+                        >
+                            <View style={[
+                                styles.customSwitchThumb,
+                                isTrialEnabled ? styles.customSwitchThumbActive : styles.customSwitchThumbInactive
+                            ]} />
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.ctaSection}>
-                    <Text style={styles.priceInfo}>
-                        {isTrialEnabled ? (
-                            <>Start your <Text style={styles.price}>7-day free trial</Text>, then €9.99/week</>
-                        ) : (
-                            <>Subscribe to Pro for just <Text style={styles.price}>€9.99/week</Text></>
-                        )}
-                    </Text>
-                    <TouchableOpacity style={styles.continueBtn} onPress={handleContinue}>
-                        <Text style={styles.continueText}>Continue</Text>
-                    </TouchableOpacity>
+                    {isLoading ? (
+                        <ActivityIndicator color={Theme.colors.primary} size="large" style={{ marginBottom: Theme.spacing.m }} />
+                    ) : (
+                        <>
+                            <Text style={styles.priceInfo}>
+                                {isTrialEnabled && hasTrialOffer ? (
+                                    <>Start your <Text style={styles.price}>7-day free trial</Text>, then {priceString}/week</>
+                                ) : (
+                                    <>Subscribe to Pro for just <Text style={styles.price}>{priceString}/week</Text></>
+                                )}
+                            </Text>
+                            <TouchableOpacity
+                                style={[styles.continueBtn, !weeklyPackage && styles.continueBtnDisabled]}
+                                onPress={handleContinue}
+                                disabled={!weeklyPackage}
+                            >
+                                <Text style={styles.continueText}>
+                                    {isTrialEnabled && hasTrialOffer ? 'Start Free Trial' : 'Continue'}
+                                </Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
 
                 <View style={styles.footerLinks}>
-                    <TouchableOpacity><Text style={styles.footerLink}>Restore Purchases</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={handleRestore}>
+                        <Text style={styles.footerLink}>Restore Purchases</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'terms' } })}>
                         <Text style={styles.footerLink}>Terms</Text>
                     </TouchableOpacity>
@@ -235,6 +276,7 @@ const styles = StyleSheet.create({
     ctaSection: {
         width: '100%',
         alignItems: 'center',
+        marginTop: Theme.spacing.xl,
     },
     priceInfo: {
         color: Theme.colors.text.secondary,
@@ -251,6 +293,9 @@ const styles = StyleSheet.create({
         paddingVertical: 18,
         borderRadius: Theme.borderRadius.xl,
         alignItems: 'center',
+    },
+    continueBtnDisabled: {
+        opacity: 0.5,
     },
     continueText: {
         color: Theme.colors.background,
@@ -286,9 +331,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     customSwitchThumbActive: {
-        alignSelf: 'flex-end',
+        alignSelf: 'flex-end' as const,
     },
     customSwitchThumbInactive: {
-        alignSelf: 'flex-start',
+        alignSelf: 'flex-start' as const,
     },
 });
