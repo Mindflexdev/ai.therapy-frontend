@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-const SUPABASE_URL = 'https://tazrriepmnpqoutdxubt.supabase.co';
+// Use custom domain if set in env, otherwise fallback to Supabase default
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://app.ai.therapy.free';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhenJyaWVwbW5wcW91dGR4dWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyMDIyNTEsImV4cCI6MjA4Njc3ODI1MX0.ShLuwWwgJojhWW514IREdjBczGOYvZX6MJKhKUehJYs';
 
 // On web, use localStorage directly (synchronous) instead of AsyncStorage.
