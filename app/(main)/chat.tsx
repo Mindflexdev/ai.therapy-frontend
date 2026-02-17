@@ -8,15 +8,18 @@ import { useNavigation, useLocalSearchParams } from 'expo-router';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../../src/context/AuthContext';
 import LoginScreen from './login';
+import Constants from 'expo-constants';
 
 const INITIAL_MESSAGES = [
     { id: '1', text: 'Hello, I am [Name]. How can I support you today?', isUser: false, time: '14:20' },
 ];
 
-// n8n webhook URL - configure this based on your deployment
-const N8N_WEBHOOK_URL = Platform.OS === 'web' 
-    ? 'http://localhost:5678/webhook/chat'
-    : 'http://n8n:5678/webhook/chat';
+// n8n webhook configuration from env vars
+// Set in .env: N8N_WEBHOOK_URL, N8N_WEBHOOK_USER, N8N_WEBHOOK_PASS
+const extraConfig = Constants.expoConfig?.extra || {};
+const N8N_WEBHOOK_URL = extraConfig.N8N_WEBHOOK_URL || 'https://admin.ai.therapy.free/n8n/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
+const N8N_WEBHOOK_USER = extraConfig.N8N_WEBHOOK_USER || 'moritz';
+const N8N_WEBHOOK_PASS = extraConfig.N8N_WEBHOOK_PASS || '123';
 
 
 import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
@@ -78,16 +81,24 @@ export default function ChatScreen() {
         try {
             setIsTyping(true);
             
+            // Build headers with optional Basic Auth
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+            
+            if (N8N_WEBHOOK_USER && N8N_WEBHOOK_PASS) {
+                const authString = btoa(`${N8N_WEBHOOK_USER}:${N8N_WEBHOOK_PASS}`);
+                headers['Authorization'] = `Basic ${authString}`;
+            }
+            
             const response = await fetch(N8N_WEBHOOK_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({
                     message: message,
-                    therapistName: therapistName,
+                    characterId: therapistName,  // Use characterId from your workflow
                     sessionId: user?.id || 'anonymous',
-                    userId: user?.id || null,
+                    user: user ? { id: user.id, email: user.email } : null,
                 }),
             });
 

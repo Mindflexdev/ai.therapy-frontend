@@ -35,6 +35,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "N8N_WEBHOOK_URL": "${N8N_WEBHOOK_URL}",
+      "N8N_WEBHOOK_USER": "${N8N_WEBHOOK_USER}",
+      "N8N_WEBHOOK_PASS": "${N8N_WEBHOOK_PASS}"
     }
   }
 }
