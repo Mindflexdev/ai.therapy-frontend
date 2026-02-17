@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ImageBackground, Platform, Animated } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ImageBackground, Platform } from 'react-native';
 import { Theme } from '../constants/Theme';
 import { BlurView } from 'expo-blur';
 
@@ -18,35 +18,9 @@ interface Props {
 export const TherapistCard = ({ therapist, isSelected, onSelect }: Props) => {
     const [isHovered, setIsHovered] = useState(false);
     const isWeb = Platform.OS === 'web';
-    const pulseAnim = useRef(new Animated.Value(1)).current;
-
-    useEffect(() => {
-        if (therapist.name === 'Sarah') {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, {
-                        toValue: 1.05,
-                        duration: 1200,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(pulseAnim, {
-                        toValue: 1,
-                        duration: 1200,
-                        useNativeDriver: true,
-                    }),
-                ])
-            ).start();
-        }
-    }, [therapist.name]);
 
     return (
-        <Animated.View style={[
-            styles.container,
-            therapist.name === 'Sarah' && {
-                transform: [{ scale: pulseAnim }],
-                zIndex: 10,
-            }
-        ]}>
+        <View style={styles.container}>
             <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={onSelect}
@@ -71,7 +45,7 @@ export const TherapistCard = ({ therapist, isSelected, onSelect }: Props) => {
                     </ImageBackground>
                 </View>
             </TouchableOpacity>
-        </Animated.View>
+        </View>
     );
 };
 
