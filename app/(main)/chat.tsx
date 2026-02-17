@@ -13,6 +13,11 @@ const INITIAL_MESSAGES = [
     { id: '1', text: 'Hello, I am [Name]. How can I support you today?', isUser: false, time: '14:20' },
 ];
 
+// n8n webhook URL - configure this based on your deployment
+const N8N_WEBHOOK_URL = Platform.OS === 'web' 
+    ? 'http://localhost:5678/webhook/chat'
+    : 'http://n8n:5678/webhook/chat';
+
 
 import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
 
@@ -26,7 +31,7 @@ export default function ChatScreen() {
     const [isRecording, setIsRecording] = useState(false);
     const [inputText, setInputText] = useState('');
     const navigation = useNavigation<DrawerNavigationProp<any>>();
-    const { showLoginModal, setShowLoginModal, isLoggedIn, setPendingTherapist, pendingTherapist, clearPendingTherapist, selectedTherapistId, selectTherapist } = useAuth();
+    const { showLoginModal, setShowLoginModal, isLoggedIn, user, setPendingTherapist, pendingTherapist, clearPendingTherapist, selectedTherapistId, selectTherapist } = useAuth();
 
     // Restore draft message from pendingTherapist (saved before OAuth redirect)
     // Only auto-send if the user is actually logged in
@@ -40,12 +45,15 @@ export default function ChatScreen() {
             clearPendingTherapist();
             // Wait for the initial therapist greeting to load, then send the draft
             const timer = setTimeout(() => {
-                setMessages(prev => [...prev, {
+                const userMessage = {
                     id: `draft-${Date.now()}`,
                     text: draftMessage,
                     isUser: true,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                }]);
+                };
+                setMessages(prev => [...prev, userMessage]);
+                // Send to n8n and get AI response
+                sendMessageToN8N(draftMessage);
             }, 1800); // Slightly after the 1500ms greeting delay
             return () => clearTimeout(timer);
         }
@@ -65,6 +73,54 @@ export default function ChatScreen() {
     }, []);
 
 
+    // Send message to n8n webhook and get AI response
+    const sendMessageToN8N = async (message: string) => {
+        try {
+            setIsTyping(true);
+            
+            const response = await fetch(N8N_WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    therapistName: therapistName,
+                    sessionId: user?.id || 'anonymous',
+                    userId: user?.id || null,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            // Add AI response to messages
+            const aiMessage = {
+                id: data.id || `ai-${Date.now()}`,
+                text: data.text || data.response || 'I apologize, but I was unable to respond.',
+                isUser: false,
+                time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            
+            setMessages(prev => [...prev, aiMessage]);
+        } catch (error) {
+            console.error('Error sending message to n8n:', error);
+            // Add a fallback error message
+            const errorMessage = {
+                id: `error-${Date.now()}`,
+                text: 'I apologize, but I am having trouble connecting right now. Please try again in a moment.',
+                isUser: false,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
     const handleSend = () => {
         if (inputText.trim()) {
             // Check if user is logged in before sending
@@ -74,14 +130,19 @@ export default function ChatScreen() {
                 return;
             }
 
-            const newMessage = {
+            const userMessage = {
                 id: Date.now().toString(),
                 text: inputText,
                 isUser: true,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
-            setMessages(prev => [...prev, newMessage]);
+            
+            const messageText = inputText.trim();
+            setMessages(prev => [...prev, userMessage]);
             setInputText('');
+            
+            // Send to n8n and get AI response
+            sendMessageToN8N(messageText);
         }
     };
 
