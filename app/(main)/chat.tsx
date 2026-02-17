@@ -7,18 +7,20 @@ import { Menu, Phone, Video, Plus, Camera, Mic, ChevronLeft, Square, ArrowUp } f
 import { useNavigation, useLocalSearchParams } from 'expo-router';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../../src/context/AuthContext';
+import { supabase } from '../../src/lib/supabase';
 import LoginScreen from './login';
-import Constants from 'expo-constants';
 
 const INITIAL_MESSAGES = [
     { id: '1', text: 'Hello, I am [Name]. How can I support you today?', isUser: false, time: '14:20' },
 ];
 
-// n8n webhook configuration - hardcoded URL (env substitution fails in some builds)
-const N8N_WEBHOOK_URL = 'https://webhook.ai.therapy.free/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
-// No auth needed on webhook subdomain
-const N8N_WEBHOOK_USER = '';
-const N8N_WEBHOOK_PASS = '';
+// Together AI configuration (no n8n needed)
+const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions';
+const TOGETHER_API_KEY = process.env.EXPO_PUBLIC_TOGETHER_API_KEY || '';
+const DEFAULT_MODEL = 'MiniMaxAI/MiniMax-M2.5';
+
+// Remove old n8n references - keeping for backward compatibility if needed
+// const N8N_WEBHOOK_URL = 'https://webhook.ai.therapy.free/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
 
 
 import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
@@ -54,8 +56,8 @@ export default function ChatScreen() {
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 };
                 setMessages(prev => [...prev, userMessage]);
-                // Send to n8n and get AI response
-                sendMessageToN8N(draftMessage);
+                // Send to Together AI and get response
+                sendMessageToAI(draftMessage);
             }, 1800); // Slightly after the 1500ms greeting delay
             return () => clearTimeout(timer);
         }
@@ -75,50 +77,92 @@ export default function ChatScreen() {
     }, []);
 
 
-    // Send message to n8n webhook and get AI response
-    const sendMessageToN8N = async (message: string) => {
+    // Fetch character system prompt from Supabase
+    const fetchCharacterPrompt = async (name: string): Promise<string> => {
+        try {
+            const { data, error } = await supabase
+                .from('characters')
+                .select('soul')
+                .eq('name', name)
+                .single();
+            
+            if (error || !data) {
+                console.error('Error fetching character:', error);
+                // Fallback prompts
+                const fallbacks: Record<string, string> = {
+                    Marcus: 'You are Marcus, a warm and grounded AI mental health companion with a CBT-influenced approach.',
+                    Sarah: 'You are Sarah, an empathetic and gentle AI mental health companion with a trauma-informed approach.',
+                    Liam: 'You are Liam, an analytical yet warm AI mental health companion with a behavioral approach.',
+                    Emily: 'You are Emily, an AI mental health companion with existential and spiritual depth.',
+                };
+                return fallbacks[name] || fallbacks.Marcus;
+            }
+            return data.soul;
+        } catch (err) {
+            console.error('Error:', err);
+            return 'You are a helpful AI mental health companion.';
+        }
+    };
+
+    // Send message to Together AI directly (no n8n)
+    const sendMessageToAI = async (message: string) => {
+        if (!TOGETHER_API_KEY) {
+            const errorMessage = {
+                id: `error-${Date.now()}`,
+                text: 'AI service not configured. Please check API key.',
+                isUser: false,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            setMessages(prev => [...prev, errorMessage]);
+            return;
+        }
+
         try {
             setIsTyping(true);
             
-            // Build headers with optional Basic Auth
-            const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-            };
+            // Get character prompt
+            const systemPrompt = await fetchCharacterPrompt(therapistName);
             
-            if (N8N_WEBHOOK_USER && N8N_WEBHOOK_PASS) {
-                const authString = btoa(`${N8N_WEBHOOK_USER}:${N8N_WEBHOOK_PASS}`);
-                headers['Authorization'] = `Basic ${authString}`;
-            }
-            
-            const response = await fetch(N8N_WEBHOOK_URL, {
+            // Build messages array
+            const messages_for_ai = [
+                { role: 'system' as const, content: systemPrompt },
+                { role: 'user' as const, content: message },
+            ];
+
+            const response = await fetch(TOGETHER_API_URL, {
                 method: 'POST',
-                headers,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+                },
                 body: JSON.stringify({
-                    message: message,
-                    characterId: therapistName,  // Use characterId from your workflow
-                    sessionId: user?.id || 'anonymous',
-                    user: user ? { id: user.id, email: user.email } : null,
+                    model: DEFAULT_MODEL,
+                    messages: messages_for_ai,
+                    temperature: 0.7,
+                    max_tokens: 1024,
+                    top_p: 0.9,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`Together AI error: ${response.status} ${errorText}`);
             }
 
             const data = await response.json();
+            const text = data.choices?.[0]?.message?.content || 'I apologize, but I was unable to generate a response.';
             
             // Add AI response to messages
             const aiMessage = {
-                id: data.id || `ai-${Date.now()}`,
-                text: data.text || data.response || 'I apologize, but I was unable to respond.',
+                id: `ai-${Date.now()}`,
+                text: text.trim(),
                 isUser: false,
-                time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
             
             setMessages(prev => [...prev, aiMessage]);
-        } catch (error) {
-            console.error('Error sending message to n8n:', error);
-            // Add a fallback error message
+        } catch (error: any) {
+            console.error('Error sending message to AI:', error);
             const errorMessage = {
                 id: `error-${Date.now()}`,
                 text: 'I apologize, but I am having trouble connecting right now. Please try again in a moment.',
@@ -151,8 +195,8 @@ export default function ChatScreen() {
             setMessages(prev => [...prev, userMessage]);
             setInputText('');
             
-            // Send to n8n and get AI response
-            sendMessageToN8N(messageText);
+            // Send to Together AI and get response
+            sendMessageToAI(messageText);
         }
     };
 
