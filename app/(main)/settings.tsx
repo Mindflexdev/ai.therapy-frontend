@@ -72,9 +72,9 @@ export default function SettingsScreen() {
                 </View>
 
                 <View style={styles.section}>
-                    <SettingRow icon={ShieldCheck} label="Safety & Legal" onPress={() => Linking.openURL('https://ai.therapy.free/legal')} />
-                    <SettingRow icon={Lock} label="Privacy Policy" onPress={() => Linking.openURL('https://ai.therapy.free/legal')} />
-                    <SettingRow icon={FileText} label="Terms of Use" onPress={() => Linking.openURL('https://ai.therapy.free/legal')} />
+                    <SettingRow icon={ShieldCheck} label="Safety & Legal" onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'safety' } })} />
+                    <SettingRow icon={Lock} label="Privacy Policy" onPress={() => Linking.openURL('https://ai.therapy.free/legal?section=privacy')} />
+                    <SettingRow icon={FileText} label="Terms of Use" onPress={() => Linking.openURL('https://ai.therapy.free/legal?section=terms')} />
                 </View>
 
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

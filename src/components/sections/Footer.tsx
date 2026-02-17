@@ -12,8 +12,11 @@ export function Footer() {
   const tapCount = useRef(0);
   const lastTapTime = useRef(0);
 
-  const openLegal = () => {
-    Linking.openURL('https://ai.therapy.free/legal');
+  const openLegal = (section?: string) => {
+    const url = section 
+      ? `https://ai.therapy.free/legal?section=${section}`
+      : 'https://ai.therapy.free/legal';
+    Linking.openURL(url);
   };
 
   const handleSecretTap = () => {
@@ -45,7 +48,7 @@ export function Footer() {
           <Text style={styles.link}>Terms</Text>
         </TouchableOpacity>
         <Text style={styles.separator}>•</Text>
-        <TouchableOpacity onPress={openLegal}>
+        <TouchableOpacity onPress={() => openLegal('privacy')}>
           <Text style={styles.link}>Privacy</Text>
         </TouchableOpacity>
         <Text style={styles.separator}>•</Text>
