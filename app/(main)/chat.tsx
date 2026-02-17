@@ -25,6 +25,18 @@ const DEFAULT_MODEL = 'MiniMaxAI/MiniMax-M2.5';
 
 import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
 
+// Generate or get session ID for message persistence
+const getSessionId = () => {
+    let sessionId = typeof window !== 'undefined' ? window.localStorage.getItem('chat_session_id') : null;
+    if (!sessionId) {
+        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('chat_session_id', sessionId);
+        }
+    }
+    return sessionId;
+};
+
 export default function ChatScreen() {
     const { name } = useLocalSearchParams();
     const therapistName = (name as string) || 'Marcus';
@@ -36,6 +48,69 @@ export default function ChatScreen() {
     const [inputText, setInputText] = useState('');
     const navigation = useNavigation<DrawerNavigationProp<any>>();
     const { showLoginModal, setShowLoginModal, isLoggedIn, user, setPendingTherapist, pendingTherapist, clearPendingTherapist, selectedTherapistId, selectTherapist } = useAuth();
+    const sessionId = useRef(getSessionId());
+
+    // Fetch existing messages from Supabase on mount
+    const fetchMessages = async () => {
+        if (!isLoggedIn || !user) return;
+        
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('session_id', sessionId.current)
+                .eq('character_name', therapistName)
+                .order('created_at', { ascending: true });
+            
+            if (error) {
+                console.error('Error fetching messages:', error);
+                return;
+            }
+            
+            if (data && data.length > 0) {
+                const loadedMessages = data.map((msg: any) => ({
+                    id: msg.id.toString(),
+                    text: msg.content,
+                    isUser: msg.message_type === 'user',
+                    time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                }));
+                setMessages(loadedMessages);
+            }
+        } catch (err) {
+            console.error('Error loading messages:', err);
+        }
+    };
+
+    // Save message to Supabase
+    const saveMessage = async (content: string, messageType: 'user' | 'ai') => {
+        if (!isLoggedIn || !user) return;
+        
+        try {
+            const { error } = await supabase
+                .from('messages')
+                .insert({
+                    session_id: sessionId.current,
+                    message: JSON.stringify({ content, character: therapistName }),
+                    message_type: messageType,
+                    content: content,
+                    character_name: therapistName,
+                    user_id: user.id,
+                });
+            
+            if (error) {
+                console.error('Error saving message:', error);
+            }
+        } catch (err) {
+            console.error('Error saving message:', err);
+        }
+    };
+
+    // Load messages on mount when logged in
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchMessages();
+        }
+    }, [isLoggedIn, user, therapistName]);
 
     // Restore draft message from pendingTherapist (saved before OAuth redirect)
     // Only auto-send if the user is actually logged in
@@ -161,15 +236,22 @@ export default function ChatScreen() {
             };
             
             setMessages(prev => [...prev, aiMessage]);
+            
+            // Save AI response to database
+            saveMessage(text.trim(), 'ai');
         } catch (error: any) {
             console.error('Error sending message to AI:', error);
+            const errorText = 'I apologize, but I am having trouble connecting right now. Please try again in a moment.';
             const errorMessage = {
                 id: `error-${Date.now()}`,
-                text: 'I apologize, but I am having trouble connecting right now. Please try again in a moment.',
+                text: errorText,
                 isUser: false,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
             setMessages(prev => [...prev, errorMessage]);
+            
+            // Save error message as AI response
+            saveMessage(errorText, 'ai');
         } finally {
             setIsTyping(false);
         }
@@ -194,6 +276,9 @@ export default function ChatScreen() {
             const messageText = inputText.trim();
             setMessages(prev => [...prev, userMessage]);
             setInputText('');
+            
+            // Save user message to database BEFORE sending to AI
+            saveMessage(messageText, 'user');
             
             // Send to Together AI and get response
             sendMessageToAI(messageText);
