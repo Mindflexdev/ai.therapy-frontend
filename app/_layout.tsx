@@ -3,8 +3,10 @@ import { useFonts, PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-d
 import { Inter_400Regular, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Theme } from '../src/constants/Theme';
 
@@ -73,6 +75,17 @@ function RootLayoutNav() {
         <AuthProvider>
             <SubscriptionProvider>
                 <ThemeProvider value={DarkTheme}>
+                    {Platform.OS === 'web' && (
+                        <Head>
+                            <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png" />
+                            <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png" />
+                            <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png" />
+                            <link rel="manifest" href="/assets/favicons/site.webmanifest" />
+                            <meta name="apple-mobile-web-app-capable" content="yes" />
+                            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                            <meta name="apple-mobile-web-app-title" content="ai.therapy" />
+                        </Head>
+                    )}
                     <OAuthRedirectHandler />
                     <Stack
                         screenOptions={{
