@@ -27,12 +27,20 @@ CREATE POLICY "Agents are readable by everyone"
 ON agents FOR SELECT
 USING (is_active = true);
 
--- Only admins can create/update/delete (you'll need admin logic)
-CREATE POLICY "Agents are manageable by authenticated users"
-ON agents FOR ALL
-TO authenticated
-USING (true)
-WITH CHECK (true);
+-- Only admins can create/update/delete
+-- Admin role is set via app_metadata: UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || '{"role": "admin"}' WHERE id = '<user-id>';
+CREATE POLICY "Agents insert admin only"
+ON agents FOR INSERT TO authenticated
+WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+CREATE POLICY "Agents update admin only"
+ON agents FOR UPDATE TO authenticated
+USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+CREATE POLICY "Agents delete admin only"
+ON agents FOR DELETE TO authenticated
+USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
 -- Index for sorting
 CREATE INDEX IF NOT EXISTS idx_agents_sort_order ON agents(sort_order);
