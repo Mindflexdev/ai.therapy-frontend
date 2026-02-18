@@ -294,26 +294,32 @@ These tables exist from earlier work (not created by us).
 
 ## Environment Variables
 
+### Domain Architecture
+
+| Domain | Service | Purpose |
+|--------|---------|---------|
+| `ai.therapy.free` | Vercel | Frontend app |
+| `app.ai.therapy.free` | Supabase (custom domain) | Backend: DB, Auth, Edge Functions |
+
+⚠️ **`app.ai.therapy.free` is the custom Supabase domain** — NOT a frontend URL. Always use this for `EXPO_PUBLIC_SUPABASE_URL`, not the raw `tazrriepmnpqoutdxubt.supabase.co`.
+
 ### Required for Vercel Deployment
 
 ```bash
-# Together AI (for chat responses)
-EXPO_PUBLIC_TOGETHER_API_KEY=your_key_here
-
-# Supabase (for database + auth)
-SUPABASE_URL=https://app.ai.therapy.free
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# Supabase (for database + auth + edge functions)
+EXPO_PUBLIC_SUPABASE_URL=https://app.ai.therapy.free
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 # Optional RevenueCat (for subscriptions)
 EXPO_PUBLIC_REVENUECAT_API_KEY=your_key
 ```
 
+**Note:** Together AI key is NO LONGER a frontend env var. AI calls are proxied through the `together-proxy` Supabase Edge Function, which reads `TOGETHER_API_KEY` from Supabase Secrets (server-side only).
+
 ### Where to Set
 
-1. Go to `vercel.com` → Your Project
-2. Settings → Environment Variables
-3. Add each variable
-4. Redeploy
+1. **Vercel env vars** → `vercel.com` → Project → Settings → Environment Variables → Add above vars → Redeploy
+2. **Supabase secrets** → `supabase secrets set TOGETHER_API_KEY=<key> --project-ref tazrriepmnpqoutdxubt`
 
 ---
 
