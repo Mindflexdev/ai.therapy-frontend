@@ -7,10 +7,10 @@ import Purchases, {
     PurchasesOfferings,
 } from 'react-native-purchases';
 
-// RevenueCat Public API Keys
+// RevenueCat Public API Keys (from environment variables)
 const API_KEYS = {
-    ios: 'appl_IHJHPoCDqddZGdKGNZiNaxQAnKS',
-    android: 'goog_REPLACE_WITH_YOUR_REVENUECAT_ANDROID_API_KEY',   // TODO: Add Android app in RevenueCat
+    ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '',
+    android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '',
 };
 
 type SubscriptionContextType = {

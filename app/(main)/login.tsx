@@ -10,7 +10,7 @@ import { Footer } from '../../src/components/sections/Footer';
 export default function LoginScreen() {
     const router = useRouter();
     const { showLoginModal, setShowLoginModal, loginWithOtp, loginWithGoogle, loginWithApple, isLoggedIn, setPendingTherapist, pendingTherapist } = useAuth();
-    const { name, image } = useLocalSearchParams();
+    const { name } = useLocalSearchParams();
     const { height } = useWindowDimensions();
     const isSmallScreen = height < 700;
     const [email, setEmail] = useState('');
@@ -24,7 +24,7 @@ export default function LoginScreen() {
             setShowLoginModal(false);
             router.push({
                 pathname: '/(main)/paywall',
-                params: { name, image }
+                params: { name }
             });
         }
     }, [isLoggedIn]);

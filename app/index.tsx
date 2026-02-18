@@ -107,7 +107,7 @@ export default function Onboarding() {
     setTimeout(() => {
       router.push({
         pathname: '/(main)/chat',
-        params: { name: therapist.name, image: therapist.image }
+        params: { name: therapist.name }
       });
     }, 400);
   };

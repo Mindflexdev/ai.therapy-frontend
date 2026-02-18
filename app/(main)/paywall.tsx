@@ -7,7 +7,7 @@ import { useSubscription } from '../../src/context/SubscriptionContext';
 
 export default function PaywallScreen() {
     const router = useRouter();
-    const { name, image } = useLocalSearchParams();
+    const { name } = useLocalSearchParams();
     const [isTrialEnabled, setIsTrialEnabled] = useState(false);
     const { offerings, purchasePackage, restorePurchases, isPro, isLoading } = useSubscription();
 
@@ -27,7 +27,7 @@ export default function PaywallScreen() {
         if (success) {
             router.push({
                 pathname: '/(main)/chat',
-                params: { name, image },
+                params: { name },
             });
         }
     };
