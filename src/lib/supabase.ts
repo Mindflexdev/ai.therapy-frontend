@@ -2,9 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Use custom domain if set in env, otherwise fallback to Supabase default
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://app.ai.therapy.free';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhenJyaWVwbW5wcW91dGR4dWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyMDIyNTEsImV4cCI6MjA4Njc3ODI1MX0.ShLuwWwgJojhWW514IREdjBczGOYvZX6MJKhKUehJYs';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY environment variables');
+}
 
 // On web, use localStorage directly (synchronous) instead of AsyncStorage.
 // AsyncStorage on web wraps localStorage in Promises, which can cause timing
