@@ -6,7 +6,7 @@ import { Theme } from '../../constants/Theme';
 export function FAQSection() {
   const faqs = [
     { q: 'is this real therapy?', a: "no, it's AI conversation support" },
-    { q: 'is it private?', a: 'yes, fully encrypted' },
+    { q: 'is it private?', a: 'yes, your data is kept private & secure' },
     { q: "what if i'm in crisis?", a: 'call 988 or emergency services' },
     { q: 'can i delete my data?', a: 'anytime' },
   ];
