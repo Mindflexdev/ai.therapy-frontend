@@ -228,45 +228,50 @@ const response = await fetch('https://api.together.xyz/v1/chat/completions', {
 
 ### Tables
 
-#### `characters` — AI Therapist Definitions
+#### `therapy_agents` — AI Therapist Definitions (CANONICAL)
+
+This is the **primary table** used by the admin panel at `admin.ai.therapy.free/therapy-admin/`.
 
 ```sql
-CREATE TABLE characters (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT UNIQUE NOT NULL,           -- "Marcus", "Sarah", "Liam", "Emily"
-  display_name TEXT NOT NULL,          -- "Marcus"
-  gender TEXT,                         -- "male", "female"
-  soul TEXT NOT NULL,                  -- System prompt
-  avatar_url TEXT,                     -- /avatars/marcus.png
-  accent_color TEXT,                   -- #EBCE80 (gold)
-  is_system BOOLEAN DEFAULT false,     -- true for built-in
-  is_enabled BOOLEAN DEFAULT true,   -- toggle on/off
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
+CREATE TABLE public.therapy_agents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT timezone('utc', now()) NOT NULL,
+    name TEXT NOT NULL,                -- "Dr. Mindflex", etc.
+    core_prompt TEXT,                  -- Main system prompt for this agent
+    tone TEXT,                         -- "empathetic", "analytical", etc.
+    avatar_url TEXT,
+    skills JSONB DEFAULT '[]'::jsonb   -- Array of skill objects (therapeutic techniques)
 );
 ```
 
-**RLS Policy:**
+**Key design:** Each agent is self-contained — `core_prompt` + `tone` + `skills` (JSONB array) all live on one row. Skills are NOT a separate table; they're embedded in the agent as JSON.
+
+**Admin panel UI (3 sections):**
+- **Therapy Agents** — CRUD for agents (name, core_prompt, tone, avatar)
+- **Global Skills** — Shared therapeutic skill templates
+- **System Config** — Global settings
+
+⚠️ **Legacy tables:** `characters`, `agent_config`, `therapeutic_skills` also exist from earlier migrations but are NOT used by the admin panel. The admin panel reads/writes `therapy_agents`. Frontend `chat.tsx` still reads from `characters` — this needs reconciliation.
+
+#### `profiles` — User Profiles
+
 ```sql
--- Everyone can read (public config)
-CREATE POLICY "Characters readable by everyone" 
-ON characters FOR SELECT USING (is_enabled = true);
-
--- Authenticated users can update
-CREATE POLICY "Authenticated users can manage"
-ON characters FOR ALL 
-TO authenticated USING (true) WITH CHECK (true);
+CREATE TABLE public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT,
+    display_name TEXT,
+    avatar_url TEXT,
+    auth_provider TEXT NOT NULL CHECK (auth_provider IN ('apple', 'google', 'email')),
+    subscription_tier TEXT NOT NULL DEFAULT 'free',
+    sessions_count INTEGER NOT NULL DEFAULT 0,
+    last_active_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 ```
+Auto-created on signup via trigger. Handles Apple, Google, and email magic link auth.
 
-**Data:**
-```
-Marcus  → CBT-influenced, warm, grounded
-Sarah   → Trauma-informed, empathetic, gentle  
-Liam    → Behavioral, analytical, practical
-Emily   → Existential, mindfulness-based
-```
-
-#### `messages` — Chat History (Not Yet Used)
+#### `messages` — Chat History
 
 ```sql
 CREATE TABLE messages (
