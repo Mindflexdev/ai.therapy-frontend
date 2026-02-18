@@ -130,8 +130,5 @@ create policy "Admins can read all profiles"
   on public.profiles
   for select
   using (
-    coalesce(
-      (auth.jwt()->'app_metadata'->>'is_admin')::boolean,
-      false
-    )
+    (auth.jwt()->'app_metadata'->>'role') = 'admin'
   );

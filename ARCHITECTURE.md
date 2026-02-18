@@ -298,8 +298,9 @@ These tables exist from earlier work (not created by us).
 
 | Domain | Service | Purpose |
 |--------|---------|---------|
-| `ai.therapy.free` | Vercel | Frontend app |
+| `ai.therapy.free` | Vercel | Frontend app (user-facing) |
 | `app.ai.therapy.free` | Supabase (custom domain) | Backend: DB, Auth, Edge Functions |
+| `admin.ai.therapy.free` | OpenClaw Gateway | AI CEO webchat + admin tools |
 
 ⚠️ **`app.ai.therapy.free` is the custom Supabase domain** — NOT a frontend URL. Always use this for `EXPO_PUBLIC_SUPABASE_URL`, not the raw `tazrriepmnpqoutdxubt.supabase.co`.
 
