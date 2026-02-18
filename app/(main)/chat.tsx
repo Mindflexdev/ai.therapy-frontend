@@ -237,17 +237,17 @@ export default function ChatScreen() {
     }, []);
 
 
-    // Fetch character system prompt from Supabase
-    const fetchCharacterPrompt = async (name: string): Promise<string> => {
+    // Fetch agent system prompt from Supabase (therapy_agents table)
+    const fetchAgentPrompt = async (name: string): Promise<string> => {
         try {
             const { data, error } = await supabase
-                .from('characters')
-                .select('soul')
+                .from('therapy_agents')
+                .select('core_prompt, tone, skills')
                 .eq('name', name)
                 .single();
             
             if (error || !data) {
-                console.error('Error fetching character:', error);
+                console.error('Error fetching agent:', error);
                 // Fallback prompts
                 const fallbacks: Record<string, string> = {
                     Marcus: 'You are Marcus, a warm and grounded AI mental health companion with a CBT-influenced approach.',
@@ -257,7 +257,22 @@ export default function ChatScreen() {
                 };
                 return fallbacks[name] || fallbacks.Marcus;
             }
-            return data.soul;
+
+            // Compose system prompt: core_prompt + tone + skills
+            let prompt = data.core_prompt;
+            if (data.tone) {
+                prompt += `\n\nTone: ${data.tone}`;
+            }
+            if (data.skills && Array.isArray(data.skills) && data.skills.length > 0) {
+                const skillDescriptions = data.skills
+                    .map((skill: any) => skill.name ? `- ${skill.name}${skill.description ? ': ' + skill.description : ''}` : null)
+                    .filter(Boolean)
+                    .join('\n');
+                if (skillDescriptions) {
+                    prompt += `\n\nSkills:\n${skillDescriptions}`;
+                }
+            }
+            return prompt;
         } catch (err) {
             console.error('Error:', err);
             return 'You are a helpful AI mental health companion.';
@@ -269,8 +284,8 @@ export default function ChatScreen() {
         try {
             setIsTyping(true);
             
-            // Get character prompt
-            const systemPrompt = await fetchCharacterPrompt(therapistName);
+            // Get agent prompt from therapy_agents table
+            const systemPrompt = await fetchAgentPrompt(therapistName);
             
             const { text } = await chatWithAgent(message, {
                 name: therapistName,
