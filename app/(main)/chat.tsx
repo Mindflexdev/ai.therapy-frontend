@@ -14,13 +14,8 @@ const INITIAL_MESSAGES = [
     { id: '1', text: 'Hello, I am [Name]. How can I support you today?', isUser: false, time: '14:20' },
 ];
 
-// Together AI configuration (no n8n needed)
-const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions';
-const TOGETHER_API_KEY = process.env.EXPO_PUBLIC_TOGETHER_API_KEY || '';
-const DEFAULT_MODEL = 'MiniMaxAI/MiniMax-M2.5';
-
-// Remove old n8n references - keeping for backward compatibility if needed
-// const N8N_WEBHOOK_URL = 'https://webhook.ai.therapy.free/webhook/b4d0ede8-b771-4c33-aceb-83dcb44b0bf5';
+// Together AI is now proxied through a Supabase Edge Function (see src/lib/together.ts)
+import { chatWithAgent } from '../../src/lib/together';
 
 
 import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
@@ -269,58 +264,23 @@ export default function ChatScreen() {
         }
     };
 
-    // Send message to Together AI directly (no n8n)
+    // Send message to Together AI via Supabase Edge Function proxy
     const sendMessageToAI = async (message: string) => {
-        if (!TOGETHER_API_KEY) {
-            const errorMessage = {
-                id: `error-${Date.now()}`,
-                text: 'AI service not configured. Please check API key.',
-                isUser: false,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            };
-            setMessages(prev => [...prev, errorMessage]);
-            return;
-        }
-
         try {
             setIsTyping(true);
             
             // Get character prompt
             const systemPrompt = await fetchCharacterPrompt(therapistName);
             
-            // Build messages array
-            const messages_for_ai = [
-                { role: 'system' as const, content: systemPrompt },
-                { role: 'user' as const, content: message },
-            ];
-
-            const response = await fetch(TOGETHER_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${TOGETHER_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: DEFAULT_MODEL,
-                    messages: messages_for_ai,
-                    temperature: 0.7,
-                    max_tokens: 1024,
-                    top_p: 0.9,
-                }),
+            const { text } = await chatWithAgent(message, {
+                name: therapistName,
+                systemPrompt,
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Together AI error: ${response.status} ${errorText}`);
-            }
-
-            const data = await response.json();
-            const text = data.choices?.[0]?.message?.content || 'I apologize, but I was unable to generate a response.';
             
             // Add AI response to messages
             const aiMessage = {
                 id: `ai-${Date.now()}`,
-                text: text.trim(),
+                text,
                 isUser: false,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
@@ -328,7 +288,7 @@ export default function ChatScreen() {
             setMessages(prev => [...prev, aiMessage]);
             
             // Save AI response to database
-            saveMessage(text.trim(), 'ai');
+            saveMessage(text, 'ai');
         } catch (error: any) {
             console.error('Error sending message to AI:', error);
             const errorText = 'I apologize, but I am having trouble connecting right now. Please try again in a moment.';
