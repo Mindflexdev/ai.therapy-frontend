@@ -21,9 +21,8 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
+        "appleId": "hello@ai.therapy.free",
+        "appleTeamId": "LLU4LC7G7D"
       }
     }
   }

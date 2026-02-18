@@ -287,10 +287,16 @@ export default function ChatScreen() {
             // Get agent prompt from therapy_agents table
             const systemPrompt = await fetchAgentPrompt(therapistName);
             
+            // Build recent conversation history for context (last 10 exchanges)
+            const recentHistory = messages.slice(-20).map((msg: any) => ({
+                role: msg.isUser ? 'user' as const : 'assistant' as const,
+                content: msg.text,
+            }));
+
             const { text } = await chatWithAgent(message, {
                 name: therapistName,
                 systemPrompt,
-            });
+            }, recentHistory);
             
             // Add AI response to messages
             const aiMessage = {
