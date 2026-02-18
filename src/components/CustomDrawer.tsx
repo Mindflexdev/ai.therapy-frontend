@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, Linking } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { Theme } from '../constants/Theme';
-import { LogIn, Crown, MessageSquare, ExternalLink, Lightbulb, Settings } from 'lucide-react-native';
+import { LogIn, Crown, MessageSquare, ExternalLink, Lightbulb } from 'lucide-react-native';
 import { THERAPISTS } from '../constants/Therapists';
 import { useRouter } from 'expo-router';
 
@@ -100,20 +100,6 @@ export const CustomDrawer = (props: DrawerContentComponentProps) => {
                         <Text style={styles.feedbackText}>Provide Feedback</Text>
                     </TouchableOpacity>
                 </View>
-
-                {isLoggedIn && (
-                    <>
-                        <Text style={styles.sectionTitle}>Admin</Text>
-                        <View style={styles.section}>
-                            <TouchableOpacity style={styles.feedbackItem} onPress={() => { props.navigation.closeDrawer(); router.push('/(main)/admin'); }}>
-                                <View style={styles.feedbackIconWrapper}>
-                                    <Settings size={18} color={Theme.colors.text.secondary} />
-                                </View>
-                                <Text style={styles.feedbackText}>Agent Settings</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </>
-                )}
 
                 <View style={styles.footerLinks}>
                     <TouchableOpacity style={styles.footerLink} onPress={() => router.push({ pathname: '/(main)/legal', params: { section: 'privacy' } })}>
