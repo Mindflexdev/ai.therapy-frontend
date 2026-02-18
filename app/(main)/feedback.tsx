@@ -22,11 +22,7 @@ export default function FeedbackScreen() {
 
     const handleSubmit = () => {
         // Logic to submit feedback would go here
-        console.log({
-            type: feedbackType,
-            description,
-            userMail: user?.email
-        });
+        // TODO: submit feedback to backend
         router.back();
     };
 

@@ -73,7 +73,7 @@ export async function testAgent(agentName: string, message: string): Promise<voi
       name: agentName,
       systemPrompt: `You are ${agentName}, an AI mental health companion.`,
     });
-    console.log(`${agentName} responds:`, text);
+    console.log(`${agentName} responded successfully.`);
   } catch (err) {
     console.error('Test failed:', err);
   }
