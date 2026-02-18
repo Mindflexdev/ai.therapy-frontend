@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, Modal, Image, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
 import { Theme } from '../../src/constants/Theme';
 import { X } from 'lucide-react-native';
@@ -6,13 +6,10 @@ import Svg, { Path } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { Footer } from '../../src/components/sections/Footer';
-import { THERAPISTS } from '../../src/constants/Therapists';
 
 export default function LoginScreen() {
     const router = useRouter();
-    const { showLoginModal, setShowLoginModal, loginWithOtp, loginWithGoogle, loginWithApple, isLoggedIn, setPendingTherapist, pendingTherapist, selectTherapist } = useAuth();
-    const tapRef = useRef(0);
-    const countRef = useRef(0);
+    const { showLoginModal, setShowLoginModal, loginWithOtp, loginWithGoogle, loginWithApple, isLoggedIn, setPendingTherapist, pendingTherapist } = useAuth();
     const { name, image } = useLocalSearchParams();
     const { height } = useWindowDimensions();
     const isSmallScreen = height < 700;
@@ -181,37 +178,11 @@ export default function LoginScreen() {
                                 </Text>
                             </View>
 
-                            <TouchableOpacity
-                                onPress={() => {
-                                    const now = Date.now();
-                                    const lastTap = tapRef.current;
-                                    tapRef.current = now;
-
-                                    if (now - lastTap < 500) {
-                                        countRef.current += 1;
-                                    } else {
-                                        countRef.current = 1;
-                                    }
-
-                                    if (countRef.current === 3) {
-                                        countRef.current = 0;
-                                        if (THERAPISTS.length > 0) {
-                                            const t = THERAPISTS[0];
-                                            selectTherapist(t.id, true);
-                                            setShowLoginModal(false);
-                                            router.replace({
-                                                pathname: '/(main)/chat',
-                                                params: { name: t.name, image: t.image }
-                                            });
-                                        }
-                                    }
-                                }}
-                                activeOpacity={1}
-                            >
+                            <View>
                                 <Text style={styles.copyrightText}>
                                     @ 2026 Mindflex
                                 </Text>
-                            </TouchableOpacity>
+                            </View>
                         </View>
                     </SafeAreaView>
                 </TouchableOpacity>

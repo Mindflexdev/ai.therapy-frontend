@@ -38,9 +38,15 @@ export default function AdminScreen() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
+  const isAdmin = user?.app_metadata?.role === 'admin';
+
   useEffect(() => {
-    fetchCharacters();
-  }, []);
+    if (isAdmin) {
+      fetchCharacters();
+    } else {
+      setLoading(false);
+    }
+  }, [isAdmin]);
 
   const fetchCharacters = async () => {
     const { data, error } = await supabase
@@ -114,6 +120,17 @@ export default function AdminScreen() {
   const getGreeting = (characterName: string) => {
     return DEFAULT_GREETINGS[characterName] || DEFAULT_GREETINGS.Marcus;
   };
+
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <Text style={styles.title}>Access Denied</Text>
+          <Text style={styles.loadingText}>You do not have admin privileges.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

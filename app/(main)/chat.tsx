@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert, Animated, Easing } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert, Animated, Easing, Linking } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Theme } from '../../src/constants/Theme';
 import { ChatBubble } from '../../src/components/ChatBubble';
@@ -25,6 +25,94 @@ const DEFAULT_MODEL = 'MiniMaxAI/MiniMax-M2.5';
 
 import { THERAPIST_IMAGES, THERAPISTS } from '../../src/constants/Therapists';
 
+// --- Input validation constants ---
+const MAX_MESSAGE_LENGTH = 2000;
+const RATE_LIMIT_MS = 2000; // minimum 2 seconds between messages
+
+// Crisis keywords/phrases for detection (lowercase)
+const CRISIS_PATTERNS = [
+    'kill myself', 'kill me', 'end my life', 'end it all',
+    'suicide', 'suicidal', 'want to die', 'wanna die',
+    'don\'t want to live', 'dont want to live',
+    'no reason to live', 'better off dead',
+    'take my own life', 'taking my life',
+    'self harm', 'self-harm', 'hurt myself',
+    'nicht mehr leben', 'umbringen', 'selbstmord', 'suizid',
+    'lebensmüde',
+];
+
+const detectCrisis = (text: string): boolean => {
+    const lower = text.toLowerCase();
+    return CRISIS_PATTERNS.some(pattern => lower.includes(pattern));
+};
+
+// Crisis resources banner component
+const CrisisResourcesBanner = ({ onDismiss }: { onDismiss: () => void }) => (
+    <View style={crisisBannerStyles.container}>
+        <Text style={crisisBannerStyles.title}>💛 You're not alone</Text>
+        <Text style={crisisBannerStyles.text}>
+            If you're in crisis or need immediate support, please reach out:
+        </Text>
+        <TouchableOpacity onPress={() => Linking.openURL('tel:08001110111')}>
+            <Text style={crisisBannerStyles.link}>🇩🇪 Germany: 0800 111 0 111 (Telefonseelsorge)</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => Linking.openURL('tel:08001110222')}>
+            <Text style={crisisBannerStyles.link}>🇩🇪 Germany: 0800 111 0 222</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => Linking.openURL('https://findahelpline.com')}>
+            <Text style={crisisBannerStyles.link}>🌍 International: findahelpline.com</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => Linking.openURL('tel:988')}>
+            <Text style={crisisBannerStyles.link}>🇺🇸 US: 988 Suicide & Crisis Lifeline</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onDismiss} style={crisisBannerStyles.dismissButton}>
+            <Text style={crisisBannerStyles.dismissText}>Understood</Text>
+        </TouchableOpacity>
+    </View>
+);
+
+const crisisBannerStyles = StyleSheet.create({
+    container: {
+        backgroundColor: 'rgba(255, 200, 50, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 200, 50, 0.3)',
+        borderRadius: 12,
+        padding: 16,
+        marginHorizontal: 12,
+        marginVertical: 8,
+    },
+    title: {
+        color: '#FFD700',
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginBottom: 6,
+    },
+    text: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 13,
+        marginBottom: 8,
+        lineHeight: 18,
+    },
+    link: {
+        color: '#7CB9FF',
+        fontSize: 14,
+        paddingVertical: 4,
+        textDecorationLine: 'underline',
+    },
+    dismissButton: {
+        alignSelf: 'flex-end',
+        marginTop: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+    },
+    dismissText: {
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 13,
+    },
+});
+
 // Generate or get session ID for message persistence
 const getSessionId = () => {
     let sessionId = typeof window !== 'undefined' ? window.localStorage.getItem('chat_session_id') : null;
@@ -49,6 +137,8 @@ export default function ChatScreen() {
     const navigation = useNavigation<DrawerNavigationProp<any>>();
     const { showLoginModal, setShowLoginModal, isLoggedIn, user, setPendingTherapist, pendingTherapist, clearPendingTherapist, selectedTherapistId, selectTherapist } = useAuth();
     const sessionId = useRef(getSessionId());
+    const lastSendTime = useRef(0);
+    const [showCrisisBanner, setShowCrisisBanner] = useState(false);
 
     // Fetch existing messages from Supabase on mount
     const fetchMessages = async () => {
@@ -259,21 +349,45 @@ export default function ChatScreen() {
 
     const handleSend = () => {
         if (inputText.trim()) {
+            const messageText = inputText.trim();
+
+            // Length validation
+            if (messageText.length > MAX_MESSAGE_LENGTH) {
+                Alert.alert(
+                    'Message too long',
+                    `Please keep your message under ${MAX_MESSAGE_LENGTH} characters. Current: ${messageText.length}`,
+                );
+                return;
+            }
+
+            // Rate limiting
+            const now = Date.now();
+            if (now - lastSendTime.current < RATE_LIMIT_MS) {
+                Alert.alert('Please wait', 'Please wait a moment before sending another message.');
+                return;
+            }
+
             // Check if user is logged in before sending
             if (!isLoggedIn) {
-                setPendingTherapist({ name: therapistName, pendingMessage: inputText.trim() });
+                setPendingTherapist({ name: therapistName, pendingMessage: messageText });
                 setShowLoginModal(true);
                 return;
             }
 
+            // Crisis detection — surface resources but don't block
+            if (detectCrisis(messageText)) {
+                setShowCrisisBanner(true);
+            }
+
+            lastSendTime.current = now;
+
             const userMessage = {
                 id: Date.now().toString(),
-                text: inputText,
+                text: messageText,
                 isUser: true,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
             
-            const messageText = inputText.trim();
             setMessages(prev => [...prev, userMessage]);
             setInputText('');
             
@@ -396,6 +510,24 @@ export default function ChatScreen() {
                     />
                 </View>
 
+                {/* Crisis Resources Banner */}
+                {showCrisisBanner && (
+                    <CrisisResourcesBanner onDismiss={() => setShowCrisisBanner(false)} />
+                )}
+
+                {/* Character count warning */}
+                {inputText.length > MAX_MESSAGE_LENGTH * 0.9 && (
+                    <Text style={{
+                        color: inputText.length > MAX_MESSAGE_LENGTH ? '#FF6B6B' : 'rgba(255,255,255,0.4)',
+                        fontSize: 11,
+                        textAlign: 'right',
+                        paddingHorizontal: 16,
+                        paddingBottom: 2,
+                    }}>
+                        {inputText.length}/{MAX_MESSAGE_LENGTH}
+                    </Text>
+                )}
+
                 {/* Input Bar */}
                 <View style={styles.inputBar}>
                     {isRecording ? (
@@ -433,6 +565,7 @@ export default function ChatScreen() {
                                     value={inputText}
                                     onChangeText={setInputText}
                                     multiline
+                                    maxLength={MAX_MESSAGE_LENGTH + 100} // soft buffer beyond limit
                                 />
                             </View>
 
