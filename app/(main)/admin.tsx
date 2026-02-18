@@ -1,132 +1,211 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView, Switch,
+  StyleSheet, Alert, ActivityIndicator, Modal, Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '../../src/constants/Theme';
 import { supabase } from '../../src/lib/supabase';
-import { chatWithAgent } from '../../src/lib/together';
 import { useAuth } from '../../src/context/AuthContext';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface AgentConfig {
+  main_prompt: string;
+  shared_memory: string;
+  updated_at: string;
+}
 
 interface Character {
   id: string;
   name: string;
   display_name: string;
-  gender?: string;
   soul: string;
-  avatar_url?: string;
-  accent_color?: string;
-  is_system: boolean;
   is_enabled: boolean;
-  created_at: string;
+  [key: string]: any;
+}
+
+interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  prompt_text: string;
+  enabled: boolean;
+  sort_order: number;
   updated_at: string;
 }
 
-// Initial greetings for each therapist
-const DEFAULT_GREETINGS: Record<string, string> = {
-  Marcus: "Hi, I'm Marcus!\n\nAlthough I'm not a therapist, I was developed by psychologists – as a companion for your mental health who understands you and adapts to your needs. Unlike ChatGPT, I use various psychological approaches to support you more specifically. The first session with me is currently free. This project lives from people like you. If it helps you, I would be happy about your support. Your trust is important to me: Everything you write here remains private & encrypted.\n\nWhat do you want support with?",
-  Sarah: "Hi, I'm Sarah. I'm honored you're here. Whether you're carrying something heavy, feeling stuck, or just need someone to listen – this is a safe space.\n\nI was developed by psychologists to provide psychologically-informed support, and I'm here to walk alongside you. Everything you share is private and encrypted.\n\nWhat's on your mind?",
-  Liam: "Hey, I'm Liam. I work with evidence-based approaches to help you build new patterns and habits that support your wellbeing.\n\nThink of me as a supportive partner in your corner – here to help you identify what's working, what isn't, and how to move forward. Everything here is private and encrypted.\n\nWhat would you like to work on today?",
-  Emily: "Hello, I'm Emily. I believe that within each challenge lies an opportunity for deeper understanding – of ourselves, our values, and what truly matters to us.\n\nI'm here to help you explore beneath the surface, using mindfulness and an existential lens. Everything you share is held in confidence.\n\nWhat brings you here today?"
-};
+type TabKey = 'prompt' | 'characters' | 'skills' | 'memory';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'prompt', label: 'Main Prompt' },
+  { key: 'characters', label: 'Characters' },
+  { key: 'skills', label: 'Skills' },
+  { key: 'memory', label: 'Shared Memory' },
+];
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdminScreen() {
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
-  const [testMessage, setTestMessage] = useState('');
-  const [testResponse, setTestResponse] = useState('');
-  const [isTesting, setIsTesting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-
   const isAdmin = user?.app_metadata?.role === 'admin';
 
+  const [activeTab, setActiveTab] = useState<TabKey>('prompt');
+  const [loading, setLoading] = useState(true);
+
+  // Agent config
+  const [config, setConfig] = useState<AgentConfig>({ main_prompt: '', shared_memory: '', updated_at: '' });
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  // Characters
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [editingChar, setEditingChar] = useState<Character | null>(null);
+  const [charModalVisible, setCharModalVisible] = useState(false);
+  const [savingChar, setSavingChar] = useState(false);
+
+  // Skills
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [skillModalVisible, setSkillModalVisible] = useState(false);
+  const [savingSkill, setSavingSkill] = useState(false);
+
+  // ─── Data fetching ──────────────────────────────────────────────────────────
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([fetchConfig(), fetchCharacters(), fetchSkills()]);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    if (isAdmin) {
-      fetchCharacters();
-    } else {
-      setLoading(false);
-    }
+    if (isAdmin) fetchAll();
+    else setLoading(false);
   }, [isAdmin]);
 
-  const fetchCharacters = async () => {
-    const { data, error } = await supabase
-      .from('characters')
-      .select('*')
-      .eq('is_system', true)
-      .order('created_at', { ascending: true });
-    
-    if (error) {
-      Alert.alert('Error', 'Failed to load characters: ' + error.message);
-    } else {
-      setCharacters(data || []);
-      if (data && data.length > 0 && !selectedCharacter) {
-        setSelectedCharacter(data[0]);
-      }
-    }
-    setLoading(false);
+  const fetchConfig = async () => {
+    const { data } = await supabase.from('agent_config').select('*').eq('id', 1).single();
+    if (data) setConfig(data);
   };
 
-  const updateCharacterField = (field: keyof Character, value: any) => {
-    if (!selectedCharacter) return;
-    setSelectedCharacter({ ...selectedCharacter, [field]: value });
+  const fetchCharacters = async () => {
+    const { data } = await supabase.from('characters').select('*').order('created_at', { ascending: true });
+    if (data) setCharacters(data);
+  };
+
+  const fetchSkills = async () => {
+    const { data } = await supabase.from('therapeutic_skills').select('*').order('sort_order', { ascending: true });
+    if (data) setSkills(data);
+  };
+
+  // ─── Config saves ──────────────────────────────────────────────────────────
+
+  const saveMainPrompt = async () => {
+    setSavingConfig(true);
+    const { error } = await supabase.from('agent_config').update({
+      main_prompt: config.main_prompt, updated_at: new Date().toISOString(),
+    }).eq('id', 1);
+    if (error) Alert.alert('Error', error.message);
+    else { Alert.alert('Saved', 'Main prompt updated'); fetchConfig(); }
+    setSavingConfig(false);
+  };
+
+  const saveSharedMemory = async () => {
+    setSavingConfig(true);
+    const { error } = await supabase.from('agent_config').update({
+      shared_memory: config.shared_memory, updated_at: new Date().toISOString(),
+    }).eq('id', 1);
+    if (error) Alert.alert('Error', error.message);
+    else { Alert.alert('Saved', 'Shared memory updated'); fetchConfig(); }
+    setSavingConfig(false);
+  };
+
+  // ─── Character CRUD ─────────────────────────────────────────────────────────
+
+  const openCharEditor = (char?: Character) => {
+    setEditingChar(char || { id: '', name: '', display_name: '', soul: '', is_enabled: true });
+    setCharModalVisible(true);
   };
 
   const saveCharacter = async () => {
-    if (!selectedCharacter || !user) {
-      Alert.alert('Error', 'Must be logged in to save');
-      return;
-    }
-    
-    setIsSaving(true);
-    const { error } = await supabase
-      .from('characters')
-      .update({
-        soul: selectedCharacter.soul,
-        display_name: selectedCharacter.display_name,
-        is_enabled: selectedCharacter.is_enabled,
-        accent_color: selectedCharacter.accent_color,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', selectedCharacter.id);
-    
-    if (error) {
-      Alert.alert('Error', 'Failed to save: ' + error.message);
+    if (!editingChar) return;
+    setSavingChar(true);
+    const payload = {
+      name: editingChar.name, display_name: editingChar.display_name,
+      soul: editingChar.soul, is_enabled: editingChar.is_enabled,
+      updated_at: new Date().toISOString(),
+    };
+    let error;
+    if (editingChar.id) {
+      ({ error } = await supabase.from('characters').update(payload).eq('id', editingChar.id));
     } else {
-      Alert.alert('Success', 'Character updated!');
-      fetchCharacters();
+      ({ error } = await supabase.from('characters').insert({ ...payload, is_system: true }));
     }
-    setIsSaving(false);
+    if (error) Alert.alert('Error', error.message);
+    else { setCharModalVisible(false); fetchCharacters(); }
+    setSavingChar(false);
   };
 
-  const testCharacter = async () => {
-    if (!selectedCharacter || !testMessage.trim()) return;
-    
-    setIsTesting(true);
-    setTestResponse('');
-    
-    try {
-      const { text } = await chatWithAgent(testMessage, {
-        name: selectedCharacter.name,
-        systemPrompt: selectedCharacter.soul,
-      });
-      setTestResponse(text);
-    } catch (err: any) {
-      setTestResponse('Error: ' + err.message);
-    } finally {
-      setIsTesting(false);
-    }
+  const deleteCharacter = (char: Character) => {
+    Alert.alert('Delete Character', `Delete "${char.display_name || char.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        await supabase.from('characters').delete().eq('id', char.id);
+        fetchCharacters();
+      }},
+    ]);
   };
 
-  const getGreeting = (characterName: string) => {
-    return DEFAULT_GREETINGS[characterName] || DEFAULT_GREETINGS.Marcus;
+  // ─── Skills CRUD ────────────────────────────────────────────────────────────
+
+  const openSkillEditor = (skill?: Skill) => {
+    setEditingSkill(skill || { id: '', name: '', description: '', prompt_text: '', enabled: true, sort_order: skills.length, updated_at: '' });
+    setSkillModalVisible(true);
   };
+
+  const saveSkill = async () => {
+    if (!editingSkill) return;
+    setSavingSkill(true);
+    const payload = {
+      name: editingSkill.name, description: editingSkill.description,
+      prompt_text: editingSkill.prompt_text, enabled: editingSkill.enabled,
+      sort_order: editingSkill.sort_order, updated_at: new Date().toISOString(),
+    };
+    let error;
+    if (editingSkill.id) {
+      ({ error } = await supabase.from('therapeutic_skills').update(payload).eq('id', editingSkill.id));
+    } else {
+      ({ error } = await supabase.from('therapeutic_skills').insert(payload));
+    }
+    if (error) Alert.alert('Error', error.message);
+    else { setSkillModalVisible(false); fetchSkills(); }
+    setSavingSkill(false);
+  };
+
+  const deleteSkill = (skill: Skill) => {
+    Alert.alert('Delete Skill', `Delete "${skill.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        await supabase.from('therapeutic_skills').delete().eq('id', skill.id);
+        fetchSkills();
+      }},
+    ]);
+  };
+
+  const toggleSkill = async (skill: Skill) => {
+    await supabase.from('therapeutic_skills').update({
+      enabled: !skill.enabled, updated_at: new Date().toISOString(),
+    }).eq('id', skill.id);
+    fetchSkills();
+  };
+
+  // ─── Guards ─────────────────────────────────────────────────────────────────
 
   if (!isAdmin) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <Text style={styles.title}>Access Denied</Text>
-          <Text style={styles.loadingText}>You do not have admin privileges.</Text>
+      <SafeAreaView style={s.container}>
+        <View style={s.centered}>
+          <Text style={s.title}>Access Denied</Text>
+          <Text style={s.muted}>You do not have admin privileges.</Text>
         </View>
       </SafeAreaView>
     );
@@ -134,332 +213,302 @@ export default function AdminScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
+      <SafeAreaView style={s.container}>
+        <View style={s.centered}>
           <ActivityIndicator size="large" color={Theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading agents...</Text>
+          <Text style={s.muted}>Loading…</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <Text style={styles.title}>Agent Management</Text>
-        <Text style={styles.subtitle}>Edit character prompts and test responses</Text>
-        
-        {/* Character Selector */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Select Agent</Text>
-          <View style={styles.characterList}>
-            {characters.map(character => (
-              <TouchableOpacity
-                key={character.id}
-                style={[
-                  styles.characterButton,
-                  selectedCharacter?.id === character.id && styles.characterButtonActive,
-                  !character.is_enabled && styles.characterButtonDisabled
-                ]}
-                onPress={() => setSelectedCharacter(character)}
-              >
-                <Text style={[
-                  styles.characterButtonText,
-                  selectedCharacter?.id === character.id && styles.characterButtonTextActive
-                ]}>{character.display_name}</Text>
-                <View style={[
-                  styles.statusDot,
-                  { backgroundColor: character.is_enabled ? Theme.colors.success : Theme.colors.danger }
-                ]} />
+  // ─── Tab content renderers ──────────────────────────────────────────────────
+
+  const renderPromptTab = () => (
+    <View style={s.tabContent}>
+      <Text style={s.label}>Main System Prompt</Text>
+      <Text style={s.hint}>This is the shared base prompt for all characters</Text>
+      <TextInput
+        style={s.textArea}
+        multiline
+        value={config.main_prompt}
+        onChangeText={(t) => setConfig({ ...config, main_prompt: t })}
+        placeholder="Enter the main system prompt…"
+        placeholderTextColor={Theme.colors.text.muted}
+        textAlignVertical="top"
+      />
+      {config.updated_at ? (
+        <Text style={s.timestamp}>Last updated: {new Date(config.updated_at).toLocaleString()}</Text>
+      ) : null}
+      <TouchableOpacity style={s.primaryBtn} onPress={saveMainPrompt} disabled={savingConfig}>
+        {savingConfig ? <ActivityIndicator color={Theme.colors.background} /> : <Text style={s.primaryBtnText}>Save Main Prompt</Text>}
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderCharactersTab = () => (
+    <View style={s.tabContent}>
+      {characters.map((char) => (
+        <TouchableOpacity key={char.id} style={s.card} onPress={() => openCharEditor(char)}>
+          <View style={s.cardHeader}>
+            <Text style={s.cardTitle}>{char.display_name || char.name}</Text>
+            <View style={s.cardActions}>
+              <View style={[s.dot, { backgroundColor: char.is_enabled ? Theme.colors.success : Theme.colors.danger }]} />
+              <TouchableOpacity onPress={() => deleteCharacter(char)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={s.deleteText}>✕</Text>
               </TouchableOpacity>
-            ))}
+            </View>
+          </View>
+          <Text style={s.cardSub} numberOfLines={2}>{char.soul || 'No soul defined'}</Text>
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity style={s.addBtn} onPress={() => openCharEditor()}>
+        <Text style={s.addBtnText}>+ Add Character</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderSkillsTab = () => (
+    <View style={s.tabContent}>
+      {skills.map((skill) => (
+        <View key={skill.id} style={s.card}>
+          <TouchableOpacity onPress={() => openSkillEditor(skill)} style={{ flex: 1 }}>
+            <View style={s.cardHeader}>
+              <Text style={s.cardTitle}>{skill.name}</Text>
+              <View style={s.cardActions}>
+                <Text style={s.sortBadge}>#{skill.sort_order}</Text>
+                <TouchableOpacity onPress={() => deleteSkill(skill)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Text style={s.deleteText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <Text style={s.cardSub} numberOfLines={2}>{skill.description || 'No description'}</Text>
+          </TouchableOpacity>
+          <View style={s.skillToggleRow}>
+            <Text style={s.hint}>{skill.enabled ? 'Enabled' : 'Disabled'}</Text>
+            <Switch
+              value={skill.enabled}
+              onValueChange={() => toggleSkill(skill)}
+              trackColor={{ false: Theme.colors.border, true: Theme.colors.primary }}
+            />
           </View>
         </View>
+      ))}
+      <TouchableOpacity style={s.addBtn} onPress={() => openSkillEditor()}>
+        <Text style={s.addBtnText}>+ Add Skill</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
-        {selectedCharacter && (
-          <>
-            {/* Basic Info */}
-            <View style={styles.section}>
-              <Text style={styles.label}>Display Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={selectedCharacter.display_name}
-                onChangeText={(t) => updateCharacterField('display_name', t)}
-                placeholder="Display name..."
-                placeholderTextColor={Theme.colors.text.muted}
-              />
-            </View>
+  const renderMemoryTab = () => (
+    <View style={s.tabContent}>
+      <Text style={s.label}>Shared Memory</Text>
+      <Text style={s.hint}>Persistent context shared across all characters</Text>
+      <TextInput
+        style={s.textArea}
+        multiline
+        value={config.shared_memory}
+        onChangeText={(t) => setConfig({ ...config, shared_memory: t })}
+        placeholder="Enter shared memory / context…"
+        placeholderTextColor={Theme.colors.text.muted}
+        textAlignVertical="top"
+      />
+      {config.updated_at ? (
+        <Text style={s.timestamp}>Last updated: {new Date(config.updated_at).toLocaleString()}</Text>
+      ) : null}
+      <TouchableOpacity style={s.primaryBtn} onPress={saveSharedMemory} disabled={savingConfig}>
+        {savingConfig ? <ActivityIndicator color={Theme.colors.background} /> : <Text style={s.primaryBtnText}>Save Shared Memory</Text>}
+      </TouchableOpacity>
+    </View>
+  );
 
-            {/* System Prompt (Soul) Editor */}
-            <View style={styles.section}>
-              <View style={styles.headerRow}>
-                <Text style={styles.label}>System Prompt (Soul)</Text>
-                <Switch
-                  value={selectedCharacter.is_enabled}
-                  onValueChange={(v) => updateCharacterField('is_enabled', v)}
-                  trackColor={{ false: Theme.colors.border, true: Theme.colors.primary }}
-                />
-              </View>
-              <Text style={styles.hint}>This defines how the AI responds to users</Text>
-              <TextInput
-                style={styles.textArea}
-                multiline
-                numberOfLines={16}
-                value={selectedCharacter.soul}
-                onChangeText={(t) => updateCharacterField('soul', t)}
-                placeholder="System prompt..."
-                placeholderTextColor={Theme.colors.text.muted}
-                textAlignVertical="top"
-              />
-            </View>
+  const TAB_RENDERERS: Record<TabKey, () => React.JSX.Element> = {
+    prompt: renderPromptTab,
+    characters: renderCharactersTab,
+    skills: renderSkillsTab,
+    memory: renderMemoryTab,
+  };
 
-            {/* Greeting Preview (Read-only) */}
-            <View style={styles.section}>
-              <Text style={styles.label}>Greeting Message (Read-only)</Text>
-              <Text style={styles.hint}>This is shown in the chat - stored in frontend</Text>
-              <View style={styles.greetingBox}>
-                <Text style={styles.greetingText}>
-                  {getGreeting(selectedCharacter.name)}
-                </Text>
-              </View>
-            </View>
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
-            {/* Save Button */}
-            <TouchableOpacity 
-              style={styles.saveButton} 
-              onPress={saveCharacter}
-              disabled={isSaving}
+  return (
+    <SafeAreaView style={s.container}>
+      <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled">
+        <Text style={s.title}>Admin Dashboard</Text>
+        <Text style={s.subtitle}>Manage prompts, characters, skills & shared memory</Text>
+
+        {/* Tab bar */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabBar} contentContainerStyle={s.tabBarContent}>
+          {TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[s.tab, activeTab === tab.key && s.tabActive]}
+              onPress={() => setActiveTab(tab.key)}
             >
-              {isSaving ? (
-                <ActivityIndicator color={Theme.colors.background} />
-              ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              )}
+              <Text style={[s.tabText, activeTab === tab.key && s.tabTextActive]}>{tab.label}</Text>
             </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-            {/* Test Section */}
-            <View style={styles.testSection}>
-              <Text style={styles.testTitle}>Test Agent</Text>
-              <Text style={styles.hint}>Send a test message to see how {selectedCharacter.display_name} responds</Text>
-              <TextInput
-                style={styles.testInput}
-                value={testMessage}
-                onChangeText={setTestMessage}
-                placeholder="Type a test message..."
-                placeholderTextColor={Theme.colors.text.muted}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-              <TouchableOpacity 
-                style={styles.testButton}
-                onPress={testCharacter}
-                disabled={isTesting || !testMessage.trim()}
-              >
-                {isTesting ? (
-                  <ActivityIndicator color={Theme.colors.background} />
-                ) : (
-                  <Text style={styles.testButtonText}>Send Test →</Text>
-                )}
-              </TouchableOpacity>
-              
-              {testResponse && (
-                <View style={styles.responseBox}>
-                  <Text style={styles.responseTitle}>{selectedCharacter.display_name} responds:</Text>
-                  <Text style={styles.responseText}>{testResponse}</Text>
-                </View>
-              )}
-            </View>
-          </>
-        )}
+        {TAB_RENDERERS[activeTab]()}
       </ScrollView>
+
+      {/* ─── Character Modal ─────────────────────────────────────────────── */}
+      <Modal visible={charModalVisible} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={s.modalTitle}>{editingChar?.id ? 'Edit Character' : 'New Character'}</Text>
+
+              <Text style={s.label}>Name (internal)</Text>
+              <TextInput style={s.input} value={editingChar?.name || ''} onChangeText={(t) => setEditingChar(e => e && ({ ...e, name: t }))} placeholderTextColor={Theme.colors.text.muted} placeholder="e.g. Marcus" />
+
+              <Text style={s.label}>Display Name</Text>
+              <TextInput style={s.input} value={editingChar?.display_name || ''} onChangeText={(t) => setEditingChar(e => e && ({ ...e, display_name: t }))} placeholderTextColor={Theme.colors.text.muted} placeholder="e.g. Dr. Marcus" />
+
+              <View style={s.switchRow}>
+                <Text style={s.label}>Enabled</Text>
+                <Switch value={editingChar?.is_enabled ?? true} onValueChange={(v) => setEditingChar(e => e && ({ ...e, is_enabled: v }))} trackColor={{ false: Theme.colors.border, true: Theme.colors.primary }} />
+              </View>
+
+              <Text style={s.label}>Soul (personality prompt)</Text>
+              <TextInput style={s.modalTextArea} multiline value={editingChar?.soul || ''} onChangeText={(t) => setEditingChar(e => e && ({ ...e, soul: t }))} placeholderTextColor={Theme.colors.text.muted} placeholder="Define this character's personality and approach…" textAlignVertical="top" />
+
+              <View style={s.modalBtnRow}>
+                <TouchableOpacity style={s.cancelBtn} onPress={() => setCharModalVisible(false)}>
+                  <Text style={s.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.primaryBtn} onPress={saveCharacter} disabled={savingChar}>
+                  {savingChar ? <ActivityIndicator color={Theme.colors.background} /> : <Text style={s.primaryBtnText}>Save</Text>}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── Skill Modal ─────────────────────────────────────────────────── */}
+      <Modal visible={skillModalVisible} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={s.modalTitle}>{editingSkill?.id ? 'Edit Skill' : 'New Skill'}</Text>
+
+              <Text style={s.label}>Name</Text>
+              <TextInput style={s.input} value={editingSkill?.name || ''} onChangeText={(t) => setEditingSkill(e => e && ({ ...e, name: t }))} placeholderTextColor={Theme.colors.text.muted} placeholder="e.g. CBT Techniques" />
+
+              <Text style={s.label}>Description</Text>
+              <TextInput style={s.input} value={editingSkill?.description || ''} onChangeText={(t) => setEditingSkill(e => e && ({ ...e, description: t }))} placeholderTextColor={Theme.colors.text.muted} placeholder="Brief description…" />
+
+              <Text style={s.label}>Sort Order</Text>
+              <TextInput style={s.input} value={String(editingSkill?.sort_order ?? 0)} onChangeText={(t) => setEditingSkill(e => e && ({ ...e, sort_order: parseInt(t) || 0 }))} placeholderTextColor={Theme.colors.text.muted} keyboardType="numeric" />
+
+              <View style={s.switchRow}>
+                <Text style={s.label}>Enabled</Text>
+                <Switch value={editingSkill?.enabled ?? true} onValueChange={(v) => setEditingSkill(e => e && ({ ...e, enabled: v }))} trackColor={{ false: Theme.colors.border, true: Theme.colors.primary }} />
+              </View>
+
+              <Text style={s.label}>Prompt Text</Text>
+              <TextInput style={s.modalTextArea} multiline value={editingSkill?.prompt_text || ''} onChangeText={(t) => setEditingSkill(e => e && ({ ...e, prompt_text: t }))} placeholderTextColor={Theme.colors.text.muted} placeholder="Full therapeutic prompt module text…" textAlignVertical="top" />
+
+              <View style={s.modalBtnRow}>
+                <TouchableOpacity style={s.cancelBtn} onPress={() => setSkillModalVisible(false)}>
+                  <Text style={s.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.primaryBtn} onPress={saveSkill} disabled={savingSkill}>
+                  {savingSkill ? <ActivityIndicator color={Theme.colors.background} /> : <Text style={s.primaryBtnText}>Save</Text>}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Theme.colors.background },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scroll: { flex: 1, padding: Theme.spacing.m },
+  title: { fontSize: 28, fontFamily: Theme.fonts.serif, color: Theme.colors.text.primary, marginBottom: Theme.spacing.xs },
+  subtitle: { fontSize: 14, fontFamily: Theme.fonts.sans, color: Theme.colors.text.secondary, marginBottom: Theme.spacing.l },
+  muted: { color: Theme.colors.text.secondary, marginTop: Theme.spacing.m, fontFamily: Theme.fonts.sans },
+
+  // Tabs
+  tabBar: { marginBottom: Theme.spacing.l, flexGrow: 0 },
+  tabBarContent: { gap: Theme.spacing.s },
+  tab: {
+    paddingHorizontal: Theme.spacing.m, paddingVertical: Theme.spacing.s,
+    borderRadius: Theme.borderRadius.m, backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1, borderColor: 'transparent',
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: Theme.colors.text.secondary,
-    marginTop: Theme.spacing.m,
-  },
-  scrollView: {
-    flex: 1,
-    padding: Theme.spacing.m,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: Theme.fonts.serif,
-    color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.xs,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: Theme.fonts.sans,
-    color: Theme.colors.text.secondary,
-    marginBottom: Theme.spacing.l,
-  },
-  section: {
-    marginBottom: Theme.spacing.l,
-  },
-  label: {
-    fontSize: 14,
-    fontFamily: Theme.fonts.sansBold,
-    color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.s,
-  },
-  hint: {
-    fontSize: 12,
-    fontFamily: Theme.fonts.sans,
-    color: Theme.colors.text.muted,
-    marginBottom: Theme.spacing.s,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.xs,
-  },
-  characterList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Theme.spacing.s,
-  },
-  characterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: Theme.spacing.m,
-    paddingVertical: Theme.spacing.s,
-    borderRadius: Theme.borderRadius.m,
-    gap: Theme.spacing.s,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  characterButtonActive: {
-    backgroundColor: Theme.colors.primary,
-    borderColor: Theme.colors.secondary,
-  },
-  characterButtonDisabled: {
-    opacity: 0.5,
-  },
-  characterButtonText: {
-    color: Theme.colors.text.primary,
-    fontFamily: Theme.fonts.sans,
-  },
-  characterButtonTextActive: {
-    color: Theme.colors.background,
-    fontFamily: Theme.fonts.sansBold,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  tabActive: { backgroundColor: Theme.colors.primary, borderColor: Theme.colors.secondary },
+  tabText: { fontFamily: Theme.fonts.sans, color: Theme.colors.text.secondary, fontSize: 14 },
+  tabTextActive: { fontFamily: Theme.fonts.sansBold, color: Theme.colors.background },
+
+  tabContent: { marginBottom: Theme.spacing.xxl },
+
+  // Form elements
+  label: { fontSize: 14, fontFamily: Theme.fonts.sansBold, color: Theme.colors.text.primary, marginBottom: Theme.spacing.xs, marginTop: Theme.spacing.m },
+  hint: { fontSize: 12, fontFamily: Theme.fonts.sans, color: Theme.colors.text.muted, marginBottom: Theme.spacing.s },
+  timestamp: { fontSize: 12, fontFamily: Theme.fonts.sans, color: Theme.colors.text.muted, marginTop: Theme.spacing.s, marginBottom: Theme.spacing.s },
   textArea: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: Theme.borderRadius.m,
-    padding: Theme.spacing.m,
-    color: Theme.colors.text.primary,
-    fontFamily: Theme.fonts.sans,
-    fontSize: 14,
-    minHeight: 250,
-    textAlignVertical: 'top',
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m, color: Theme.colors.text.primary, fontFamily: Theme.fonts.sans,
+    fontSize: 14, minHeight: 250, textAlignVertical: 'top',
   },
-  textInput: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: Theme.borderRadius.m,
-    padding: Theme.spacing.m,
-    color: Theme.colors.text.primary,
-    fontFamily: Theme.fonts.sans,
-    fontSize: 14,
-    height: 50,
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m, color: Theme.colors.text.primary, fontFamily: Theme.fonts.sans,
+    fontSize: 14, height: 48,
   },
-  greetingBox: {
-    backgroundColor: Theme.colors.bubbles.therapist,
-    borderRadius: Theme.borderRadius.l,
-    borderBottomLeftRadius: 4,
-    padding: Theme.spacing.m,
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Theme.spacing.m },
+
+  // Buttons
+  primaryBtn: {
+    backgroundColor: Theme.colors.primary, padding: Theme.spacing.m,
+    borderRadius: Theme.borderRadius.m, alignItems: 'center', marginTop: Theme.spacing.m, flex: 1,
   },
-  greetingText: {
-    color: Theme.colors.text.primary,
-    fontFamily: Theme.fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
+  primaryBtnText: { color: Theme.colors.background, fontFamily: Theme.fonts.sansBold, fontSize: 16 },
+  cancelBtn: {
+    backgroundColor: 'rgba(255,255,255,0.08)', padding: Theme.spacing.m,
+    borderRadius: Theme.borderRadius.m, alignItems: 'center', marginTop: Theme.spacing.m, flex: 1, marginRight: Theme.spacing.s,
   },
-  saveButton: {
-    backgroundColor: Theme.colors.primary,
-    padding: Theme.spacing.m,
-    borderRadius: Theme.borderRadius.m,
-    alignItems: 'center',
-    marginBottom: Theme.spacing.l,
+  cancelBtnText: { color: Theme.colors.text.secondary, fontFamily: Theme.fonts.sansBold, fontSize: 16 },
+  addBtn: {
+    borderWidth: 1, borderColor: Theme.colors.primary, borderStyle: 'dashed',
+    padding: Theme.spacing.m, borderRadius: Theme.borderRadius.m, alignItems: 'center', marginTop: Theme.spacing.m,
   },
-  saveButtonText: {
-    color: Theme.colors.background,
-    fontFamily: Theme.fonts.sansBold,
-    fontSize: 16,
+  addBtnText: { color: Theme.colors.primary, fontFamily: Theme.fonts.sansBold, fontSize: 14 },
+
+  // Cards
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m, marginBottom: Theme.spacing.s,
   },
-  testSection: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: Theme.spacing.m,
-    borderRadius: Theme.borderRadius.m,
-    marginBottom: Theme.spacing.xl,
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle: { fontSize: 16, fontFamily: Theme.fonts.sansBold, color: Theme.colors.text.primary },
+  cardSub: { fontSize: 13, fontFamily: Theme.fonts.sans, color: Theme.colors.text.muted, marginTop: Theme.spacing.xs },
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.s },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  deleteText: { color: Theme.colors.danger, fontSize: 16, fontFamily: Theme.fonts.sansBold },
+  sortBadge: { fontSize: 12, fontFamily: Theme.fonts.sans, color: Theme.colors.text.muted, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  skillToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Theme.spacing.s, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingTop: Theme.spacing.s },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: Theme.spacing.m },
+  modalContent: {
+    backgroundColor: Theme.colors.background, borderRadius: Theme.borderRadius.l,
+    padding: Theme.spacing.l, maxHeight: '90%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
   },
-  testTitle: {
-    fontSize: 18,
-    fontFamily: Theme.fonts.serif,
-    color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.xs,
+  modalTitle: { fontSize: 22, fontFamily: Theme.fonts.serif, color: Theme.colors.text.primary, marginBottom: Theme.spacing.s },
+  modalTextArea: {
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: Theme.borderRadius.m,
+    padding: Theme.spacing.m, color: Theme.colors.text.primary, fontFamily: Theme.fonts.sans,
+    fontSize: 14, minHeight: 180, textAlignVertical: 'top', marginTop: Theme.spacing.xs,
   },
-  testInput: {
-    backgroundColor: Theme.colors.bubbles.user,
-    borderRadius: Theme.borderRadius.l,
-    borderBottomRightRadius: 4,
-    padding: Theme.spacing.m,
-    color: Theme.colors.text.primary,
-    fontFamily: Theme.fonts.sans,
-    fontSize: 14,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    marginTop: Theme.spacing.s,
-  },
-  testButton: {
-    backgroundColor: Theme.colors.success,
-    padding: Theme.spacing.m,
-    borderRadius: Theme.borderRadius.m,
-    alignItems: 'center',
-    marginTop: Theme.spacing.m,
-  },
-  testButtonText: {
-    color: Theme.colors.background,
-    fontFamily: Theme.fonts.sansBold,
-    fontSize: 16,
-  },
-  responseBox: {
-    backgroundColor: Theme.colors.bubbles.therapist,
-    borderRadius: Theme.borderRadius.l,
-    borderBottomLeftRadius: 4,
-    padding: Theme.spacing.m,
-    marginTop: Theme.spacing.m,
-  },
-  responseTitle: {
-    color: Theme.colors.text.secondary,
-    fontSize: 12,
-    fontFamily: Theme.fonts.sansBold,
-    marginBottom: Theme.spacing.s,
-  },
-  responseText: {
-    color: Theme.colors.text.primary,
-    fontFamily: Theme.fonts.sans,
-    fontSize: 14,
-    lineHeight: 22,
-  },
+  modalBtnRow: { flexDirection: 'row', marginTop: Theme.spacing.l },
 });
