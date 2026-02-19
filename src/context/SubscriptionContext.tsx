@@ -48,6 +48,8 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
             return;
         }
 
+        let listenerRemoved = false;
+
         const init = async () => {
             try {
                 if (__DEV__) {
@@ -67,6 +69,14 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
                 setCustomerInfo(info);
                 setOfferings(offers);
                 setIsPro(checkEntitlement(info));
+
+                // Only add listener AFTER successful configure
+                if (!listenerRemoved) {
+                    Purchases.addCustomerInfoUpdateListener((updatedInfo) => {
+                        setCustomerInfo(updatedInfo);
+                        setIsPro(checkEntitlement(updatedInfo));
+                    });
+                }
             } catch (e) {
                 console.warn('RevenueCat init error:', e);
             } finally {
@@ -76,15 +86,9 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
         init();
 
-        // Listen for subscription changes (renewal, expiration, restore from another device)
-        Purchases.addCustomerInfoUpdateListener((info) => {
-            setCustomerInfo(info);
-            setIsPro(checkEntitlement(info));
-        });
-
-        // Note: addCustomerInfoUpdateListener does not return an unsubscribe function
-        // The listener persists for the app lifetime, which is fine since this provider
-        // is mounted at the root level and never unmounts.
+        return () => {
+            listenerRemoved = true;
+        };
     }, []);
 
     const purchasePackage = async (pkg: PurchasesPackage): Promise<boolean> => {
