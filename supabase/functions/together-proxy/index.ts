@@ -2,7 +2,9 @@
 // The client sends { model, messages, temperature, max_tokens, top_p } and authenticates
 // via the standard Supabase anon/JWT token in the Authorization header.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Use Supabase Edge Functions built-in auth - the client is automatically created
+// with the user's JWT from the Authorization header.
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions";
 
@@ -12,6 +14,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Helper to verify JWT using Supabase's built-in auth in edge functions
+async function verifyAuth(req: Request, supabase: SupabaseClient): Promise<{ user: any } | { error: string }> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return { error: "Missing or invalid authorization header" };
+  }
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    console.error("Auth verification failed:", error);
+    return { error: error?.message || "Invalid JWT" };
+  }
+  return { user };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -19,28 +36,28 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify the user is authenticated via Supabase JWT
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    // Get environment variables
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Create Supabase client - the edge function environment handles the JWT
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    // Verify the user is authenticated via Supabase JWT
+    const authResult = await verifyAuth(req, supabase);
+    if ("error" in authResult) {
+      return new Response(JSON.stringify({ error: "Unauthorized", details: authResult.error }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const { user } = authResult;
 
     // Get Together AI key from edge function secrets
     const togetherApiKey = Deno.env.get("TOGETHER_API_KEY");
